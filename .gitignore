@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.buyer-arena/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+test-results/
+.buyer-arena-dev/

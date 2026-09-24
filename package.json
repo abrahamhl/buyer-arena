@@ -1,0 +1,65 @@
+{
+  "name": "buyer-arena",
+  "version": "0.1.0",
+  "description": "Synthetic customer simulation & product ROI testing engine. Test your product with synthetic buyers before real customers find the problems.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "buyer-arena": "dist/cli/main.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "templates",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "setup:browser": "playwright install chromium",
+    "demo": "npm run setup:browser --silent && npm run build --silent && node dist/cli/main.js demo",
+    "ba": "node dist/cli/main.js",
+    "mcp": "node dist/cli/main.js mcp",
+    "secrets:scan": "node scripts/secret-scan.mjs",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run secrets:scan"
+  },
+  "keywords": [
+    "synthetic-users",
+    "ux-testing",
+    "playwright",
+    "ab-testing",
+    "agents",
+    "mcp",
+    "conversion",
+    "product-analytics"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.1",
+    "commander": "^13.1.0",
+    "playwright": "^1.63.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/node": "^22.20.4",
+    "eslint": "^9.39.5",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9",
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^5.0.1"
+  }
+}
