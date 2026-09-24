@@ -140,7 +140,7 @@ export const BUSINESS_AUDITOR: Auditor = {
             severity: s.completion.rate === 0 ? 'high' : 'medium',
             confidence: s.n >= 5 ? 'medium' : 'low',
             claim: 'observed_fact',
-            proposed_experiment: `Run a segment-targeted variant for "${s.segment}" addressing: ${s.top_abandon_reason ?? 'the top exit reason'}.`,
+            proposed_experiment: `Run a segment-targeted variant for "${s.segment}" addressing: ${(s.top_abandon_reason ?? 'the top exit reason').replace(/\.+$/, '')}.`,
           });
         }
       }

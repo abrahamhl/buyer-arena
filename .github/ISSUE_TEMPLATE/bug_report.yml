@@ -1,0 +1,17 @@
+name: Bug report
+description: Something in Buyer Arena does not work as documented
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes: { label: What happened?, description: Include the exact command you ran. }
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes: { label: What did you expect? }
+  - type: textarea
+    id: doctor
+    attributes: { label: Output of `npx buyer-arena doctor`, render: text }
+  - type: markdown
+    attributes:
+      value: Please do not paste API keys, customer data or private URLs. Run records can contain page text — redact before sharing.

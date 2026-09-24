@@ -212,3 +212,36 @@ describe('real browser journeys against the demo product', () => {
     expect(run.usage?.calls).toBeGreaterThan(0);
   });
 });
+
+describe('external engine adapter (Browser Use / Browser Harness boundary)', () => {
+  it('runs journeys through an external command and normalises its evidence', async () => {
+    const cmd = `"${process.execPath}" tests/fixtures/fake-engine.mjs`;
+    const res = await runSession({
+      root: tmp(),
+      sessionId: 'ext',
+      population: { ...pop, personas: pop.personas.slice(0, 2) },
+      task: DEMO_TASK,
+      variants: variants(),
+      engineCommand: cmd,
+    });
+    expect(res.runs).toHaveLength(4);
+    const cand = res.runs.find((r) => r.variant === 'candidate')!;
+    expect(cand.policy).toMatch(/^external:/);
+    expect(cand.milestones.pricing_found).toBeDefined(); // candidate shows prices on the home page
+    expect(res.runs.find((r) => r.variant === 'baseline')!.milestones.pricing_found).toBeUndefined();
+    expect(cand.events[0]!.id).toBe(`${cand.run_id}:e0`);
+  });
+
+  it('marks invalid engine output as an error run instead of crashing', async () => {
+    const res = await runSession({
+      root: tmp(),
+      sessionId: 'ext2',
+      population: { ...pop, personas: pop.personas.slice(0, 1) },
+      task: DEMO_TASK,
+      variants: [variants()[0]!],
+      engineCommand: `"${process.execPath}" -e "console.log('nope')"`,
+    });
+    expect(res.runs[0]!.status).toBe('error');
+    expect(res.runs[0]!.events[0]!.detail).toMatch(/invalid result/);
+  });
+});

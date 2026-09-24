@@ -10,6 +10,7 @@ import { createProvider } from '../providers/index.js';
 import type { ChatProvider } from '../providers/types.js';
 import { assertNoLeak, buildBrief, buildStory } from '../stories/story.js';
 import { HeuristicBuyer, stepBudget } from './heuristic.js';
+import { runExternalJourney } from '../engines/external.js';
 import { runJourney, type TraceMode } from './journey.js';
 import { LlmBuyer } from './llm-policy.js';
 import type { BuyerPolicy } from './policy.js';
@@ -37,6 +38,11 @@ export interface SessionOptions {
   trace?: TraceMode;
   screenshots?: boolean;
   headed?: boolean;
+  /**
+   * Delegate each journey to an external engine command (Browser Use, Browser Harness…)
+   * instead of the built-in Playwright runner. See src/engines/external.ts for the contract.
+   */
+  engineCommand?: string;
   /** Extra terms that must never reach a buyer (hypotheses, change descriptions…). */
   forbiddenTerms?: string[];
   signal?: AbortSignal;
@@ -174,8 +180,6 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
           }
         }
         if (budgetHit || internal.signal.aborted) return;
-        browserP ??= chromium.launch({ headless: !o.headed });
-        const browser = await browserP;
         const story = buildStory(persona, o.population.template);
         const brief = buildBrief(persona, story, o.task, variant.url);
         assertNoLeak(brief, forbidden);
@@ -191,6 +195,28 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
             },
           });
         }
+        const common = {
+          brief,
+          task: o.task,
+          runId,
+          sessionId,
+          variant: variant.name,
+          segment: persona.segment,
+          archetype: persona.archetype,
+          maxSteps: Math.min(o.maxSteps ?? Infinity, stepBudget(brief)),
+          timeoutMs,
+        };
+        if (o.engineCommand) {
+          const run = await runExternalJourney({ ...common, command: o.engineCommand });
+          writeJson(existing, run);
+          writeJson(join(outDir, 'story.json'), story);
+          results.push(run);
+          executed++;
+          o.onRun?.(run, { done: results.length, total: jobs.length, skipped: false });
+          return;
+        }
+        browserP ??= chromium.launch({ headless: !o.headed });
+        const browser = await browserP;
         const run = await runJourney({
           browser,
           brief,

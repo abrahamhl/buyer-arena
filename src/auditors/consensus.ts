@@ -118,11 +118,11 @@ export function buildConsensus(
     }
     if (supporters.length === 1 && confidence === 'high') confidence = 'medium';
     const observed_fact = cluster
-      ? `${cluster.affected}/${cluster.population} synthetic buyers on "${variant}" showed this signal; ${cluster.blocking_runs} of them did not complete the goal. Evidence spans ${runs.length} journey(s).`
+      ? `${cluster.affected}/${cluster.population} synthetic buyers on "${variant}" showed this signal; ${cluster.blocking_runs} of them did not complete the goal. Evidence cited from ${runs.length} journey(s).`
       : `${support[0]?.finding ?? ''}`.replace(/\s+/g, ' ');
     const interpretation = cluster
       ? `Likely cause (${claim}): ${playFor(topic).likely_cause}.`
-      : (support.map((f) => f.finding).find((x) => x !== observed_fact) ?? 'See linked journeys.');
+      : (support.map((f) => f.finding).find((x) => x !== observed_fact) ?? interpretFor(topic));
     items.push({
       topic,
       title: cluster?.title ?? titleFor(topic, support[0]?.finding),
@@ -154,6 +154,16 @@ export function buildConsensus(
     rejected,
     findings: valid,
   };
+}
+
+function interpretFor(topic: string): string {
+  if (topic === 'funnel_leak')
+    return 'The step after this stage loses the most buyers, so a fix there likely has the most leverage.';
+  if (topic === 'variant_delta')
+    return 'The candidate likely improves the conversion proxy for this synthetic population; impact on real users is untested.';
+  if (topic.startsWith('segment_gap:'))
+    return 'This segment has a need the current flow does not meet; the exit reasons in the linked journeys point at it.';
+  return 'Interpretation pending: inspect the linked journeys.';
 }
 
 function titleFor(topic: string, finding?: string): string {

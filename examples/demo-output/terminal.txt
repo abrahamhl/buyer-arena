@@ -1,0 +1,27 @@
+  BUYER ARENA  ·  20 BUYERS  ·  5 SEGMENTS  ·  2 VARIANTS
+  BASELINE → CANDIDATE   EXPLORATORY SIGNAL   CONVERSION PROXY
+
+                                 BASELINE   CANDIDATE     DELTA   95% INTERVAL
+  Goal completion                     40%         75%     +35pp   +15pp … +55pp
+  Abandonment                         60%         25%     −35pp   −55pp … −15pp
+  Pricing found                       75%        100%     +25pp   +10pp … +45pp
+  Reached sign-up                     60%         75%     +15pp   −15pp … +45pp
+  Runs with browser errors            55%          0%     −55pp   −75pp … −35pp
+  Friction events / buyer            1.15        1.45     +0.30   −0.40 … +0.95
+  Median steps (all journeys)           7           4        −3   
+  Median steps to goal                8.5           4      −4.5   
+  Median time to goal                1.5s       874ms    −644ms   
+
+  TOP FRICTION (candidate)
+   20/20  Pop-up interrupts the journey  NEW
+    1/20  Cheapest plan above buyer budget
+  RESOLVED vs baseline: JavaScript errors on the page · No refund / guarantee information before commitment · Buyers could not find pricing · Sign-up demands a phone number · Buyers loop back to pages already visited · Form rejected input (rules not shown up-front) · Buyers ran out of patience (step limit)
+
+  NEXT EXPERIMENTS
+  #1 Pop-up interrupts the journey                  48.8  HIGH-LEVERAGE EXPERIMENT
+  #2 Cheapest plan above buyer budget                0.1  LOW
+
+  Report      .buyer-arena\sessions\demo\report.html
+  ROI backlog .buyer-arena\sessions\demo\ROI_BACKLOG.md
+  Session     demo (40 run, 0 resumed, status complete)
+

@@ -1,0 +1,6 @@
+Buyer Arena
+Copyright 2026 The Buyer Arena contributors
+
+This product includes software developed by third parties; see package.json for
+dependencies and their licenses (Playwright: Apache-2.0, MCP SDK: MIT, zod: MIT,
+yaml: ISC, commander: MIT).

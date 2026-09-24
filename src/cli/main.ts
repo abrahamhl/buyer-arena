@@ -53,6 +53,7 @@ interface RunFlags {
   instruction?: string;
   buyer: string;
   auditor?: string;
+  engineCmd?: string;
   maxBuyers?: string;
   maxParallel?: string;
   maxSteps?: string;
@@ -85,6 +86,10 @@ function withRunOptions(cmd: Command): Command {
       'heuristic',
     )
     .option('--auditor <spec>', 'optional LLM for the five auditors (default: deterministic)')
+    .option(
+      '--engine-cmd <command>',
+      'delegate journeys to an external engine (Browser Use, Browser Harness…) — see docs/INTEGRATIONS.md',
+    )
     .option('--max-buyers <n>', 'hard cap on buyers per variant')
     .option('--max-parallel <n>', 'concurrent browser journeys (default 4, LLM 2)')
     .option('--max-steps <n>', 'hard cap on steps per journey')
@@ -151,6 +156,7 @@ function sessionOpts(f: RunFlags): Omit<SessionOptions, 'population' | 'task' | 
     root: f.root,
     sessionId: f.session,
     buyer: f.buyer,
+    engineCommand: f.engineCmd,
     maxBuyers: num(f.maxBuyers),
     maxParallel: num(f.maxParallel),
     maxSteps: num(f.maxSteps),
