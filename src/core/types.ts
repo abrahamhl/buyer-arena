@@ -157,11 +157,32 @@ export const JourneyEventSchema = z.object({
 });
 export type JourneyEvent = z.infer<typeof JourneyEventSchema>;
 
-export const Milestone = z.enum(['landed', 'pricing_found', 'cta_discovered', 'signup_started', 'checkout_started', 'goal_completed']);
+export const Milestone = z.enum([
+  'landed',
+  'pricing_found',
+  'cta_discovered',
+  'signup_started',
+  'checkout_started',
+  'goal_completed',
+]);
 export type Milestone = z.infer<typeof Milestone>;
-export const FUNNEL: Milestone[] = ['landed', 'pricing_found', 'cta_discovered', 'signup_started', 'checkout_started', 'goal_completed'];
+export const FUNNEL: Milestone[] = [
+  'landed',
+  'pricing_found',
+  'cta_discovered',
+  'signup_started',
+  'checkout_started',
+  'goal_completed',
+];
 
-export const RunStatus = z.enum(['completed', 'abandoned', 'step_limit', 'timeout', 'error', 'budget_exhausted']);
+export const RunStatus = z.enum([
+  'completed',
+  'abandoned',
+  'step_limit',
+  'timeout',
+  'error',
+  'budget_exhausted',
+]);
 export type RunStatus = z.infer<typeof RunStatus>;
 
 export const UsageSchema = z.object({

@@ -38,13 +38,22 @@ const CONFIDENCE = { low: 0.4, medium: 0.7, high: 1 } as const;
 const EFFORT_COST: Record<Effort, number> = { low: 1, medium: 2, high: 4 };
 
 /** Topics that describe the measurement or a symptom (covered by root-cause items), not a product change. */
-const NON_ACTIONABLE = (topic: string) => topic === 'variant_delta' || topic === 'funnel_leak' || topic.startsWith('segment_gap:');
+const NON_ACTIONABLE = (topic: string) =>
+  topic === 'variant_delta' || topic === 'funnel_leak' || topic.startsWith('segment_gap:');
 
 /**
  * Evidence-driven prioritisation. No money is invented: without revenue data the score is a
  * unitless leverage index. Every input is visible in the backlog so the ranking can be argued with.
  */
-export function prioritize(items: ConsensusItem[], opts: { population: number; totalSegments: number; comparison?: Comparison; effortOverrides?: Record<string, Effort> }): Opportunity[] {
+export function prioritize(
+  items: ConsensusItem[],
+  opts: {
+    population: number;
+    totalSegments: number;
+    comparison?: Comparison;
+    effortOverrides?: Record<string, Effort>;
+  },
+): Opportunity[] {
   const scored = items
     .filter((it) => !NON_ACTIONABLE(it.topic))
     .map((it) => {
@@ -52,8 +61,8 @@ export function prioritize(items: ConsensusItem[], opts: { population: number; t
       const effort = opts.effortOverrides?.[it.topic] ?? play.effort;
       const affectedRuns = it.affected_runs.length;
       const frequency = Math.min(1, affectedRuns / Math.max(1, opts.population));
-      const blocking = /(\d+) of them did not complete the goal/.exec(it.observed_fact);
-      const goal_impact = blocking && affectedRuns ? Math.min(1, Number(blocking[1]) / affectedRuns) : 0.5;
+      const goal_impact =
+        it.blocking_runs !== null && affectedRuns ? Math.min(1, it.blocking_runs / affectedRuns) : 0.5;
       const segment_breadth = Math.min(1, it.affected_segments.length / Math.max(1, opts.totalSegments));
       const f = {
         frequency,
@@ -67,7 +76,13 @@ export function prioritize(items: ConsensusItem[], opts: { population: number; t
         testability: play.testability,
       };
       const score =
-        (100 * f.frequency * f.severity * (0.5 + 0.5 * f.goal_impact) * (0.75 + 0.25 * f.segment_breadth) * f.confidence * (0.5 + 0.25 * f.reversibility + 0.25 * f.testability)) /
+        (100 *
+          f.frequency *
+          f.severity *
+          (0.5 + 0.5 * f.goal_impact) *
+          (0.75 + 0.25 * f.segment_breadth) *
+          f.confidence *
+          (0.5 + 0.25 * f.reversibility + 0.25 * f.testability)) /
         f.effort_cost;
       const diff = opts.comparison?.friction.find((d) => d.code === it.topic);
       return {

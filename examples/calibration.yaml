@@ -1,0 +1,20 @@
+# Aggregate-only calibration input for Buyer Arena.
+# Every number is a share/rate over a group of at least `min_group_size` real visitors.
+# There is no field for person-level data by design. Values below are ILLUSTRATIVE, not real data.
+source: 'illustrative example — replace with your analytics funnel export'
+period: '2026-08'
+min_group_size: 50
+segments:
+  - { archetype: price-sensitive, share: 0.30 }
+  - { archetype: goal-focused, share: 0.25 }
+  - { archetype: novice, share: 0.10 }
+  - { archetype: mobile-rushed, share: 0.25 }
+  - { archetype: skeptic, share: 0.10 }
+objections:
+  - { objection: no-phone-number, share: 0.40 }
+  - { objection: needs-refund-guarantee, share: 0.60 }
+funnel:
+  - { stage: landed, rate: 1.0 }
+  - { stage: pricing_found, rate: 0.55 }
+  - { stage: signup_started, rate: 0.22 }
+  - { stage: goal_completed, rate: 0.06 }

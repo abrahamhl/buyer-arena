@@ -53,7 +53,13 @@ export interface SessionManifest {
   task: Task;
   variants: Variant[];
   buyer: string;
-  limits: { maxBuyers: number; maxParallel: number; maxSteps?: number; timeoutMs: number; budgetUsd?: number };
+  limits: {
+    maxBuyers: number;
+    maxParallel: number;
+    maxSteps?: number;
+    timeoutMs: number;
+    budgetUsd?: number;
+  };
   status: 'running' | 'complete' | 'interrupted' | 'budget_exhausted';
   runs_total: number;
   runs_done: number;
@@ -110,7 +116,8 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
   ensureDir(dir);
   const maxBuyers = Math.min(o.maxBuyers ?? o.population.personas.length, o.population.personas.length);
   const personas = o.population.personas.slice(0, maxBuyers);
-  const isLlm = Boolean(o.provider) || (o.buyer !== undefined && o.buyer !== 'heuristic' && o.buyer !== 'mock');
+  const isLlm =
+    Boolean(o.provider) || (o.buyer !== undefined && o.buyer !== 'heuristic' && o.buyer !== 'mock');
   const maxParallel = Math.max(1, o.maxParallel ?? (isLlm ? 2 : 4));
   const timeoutMs = o.timeoutMs ?? (isLlm ? 180_000 : 60_000);
   const meter = new CostMeter({ budgetUsd: o.budgetUsd ?? (isLlm ? 1 : undefined) });
@@ -226,7 +233,15 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
   manifest.usage = mergeUsage(prior?.usage ?? [], meter.summary());
   manifest.status = budgetHit ? 'budget_exhausted' : done >= jobs.length ? 'complete' : 'interrupted';
   writeJson(manifestPath, manifest);
-  return { dir, manifest, runs: loadRuns(dir).filter((r) => jobs.some((j) => j.variant.name === r.variant && j.persona.persona_id === r.persona_id)), executed, skipped };
+  return {
+    dir,
+    manifest,
+    runs: loadRuns(dir).filter((r) =>
+      jobs.some((j) => j.variant.name === r.variant && j.persona.persona_id === r.persona_id),
+    ),
+    executed,
+    skipped,
+  };
 }
 
 export function addUsage(p: Usage | undefined, u: Usage): Usage {
@@ -244,11 +259,11 @@ export function addUsage(p: Usage | undefined, u: Usage): Usage {
 
 function mergeUsage(a: Usage[], b: Usage[]): Usage[] {
   const map = new Map<string, Usage>();
-  for (const u of [...a, ...b]) map.set(`${u.provider}:${u.model}`, addUsage(map.get(`${u.provider}:${u.model}`), u));
+  for (const u of [...a, ...b])
+    map.set(`${u.provider}:${u.model}`, addUsage(map.get(`${u.provider}:${u.model}`), u));
   return [...map.values()];
 }
 
 export function loadManifest(dir: string): SessionManifest {
   return readJson<SessionManifest>(join(dir, 'session.json'));
 }
-

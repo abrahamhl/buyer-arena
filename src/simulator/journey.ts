@@ -4,9 +4,26 @@ import { observe, type ElementInfo, type Observation } from '../browser/observe.
 import { BudgetExceededError, ProviderError } from '../core/errors.js';
 import { ensureDir } from '../core/fs.js';
 import { hashSeed } from '../core/rng.js';
-import type { BuyerBrief, JourneyEvent, Milestone, RunRecord, RunStatus, Task, Usage } from '../core/types.js';
+import type {
+  BuyerBrief,
+  JourneyEvent,
+  Milestone,
+  RunRecord,
+  RunStatus,
+  Task,
+  Usage,
+} from '../core/types.js';
 import { KW } from './heuristic.js';
-import { type Action, type BuyerPolicy, DISTRUST_RE, newMemory, pathOf, pricesIn, seenBlocks, TRUST_RE } from './policy.js';
+import {
+  type Action,
+  type BuyerPolicy,
+  DISTRUST_RE,
+  newMemory,
+  pathOf,
+  pricesIn,
+  seenBlocks,
+  TRUST_RE,
+} from './policy.js';
 
 export type TraceMode = 'off' | 'failed' | 'all';
 
@@ -35,9 +52,21 @@ class Recorder {
   readonly started = Date.now();
   step = 0;
   constructor(private readonly runId: string) {}
-  add(type: JourneyEvent['type'], url: string, fields: Partial<Omit<JourneyEvent, 'id' | 'seq' | 't' | 'type' | 'url' | 'step'>> = {}): JourneyEvent {
+  add(
+    type: JourneyEvent['type'],
+    url: string,
+    fields: Partial<Omit<JourneyEvent, 'id' | 'seq' | 't' | 'type' | 'url' | 'step'>> = {},
+  ): JourneyEvent {
     const seq = this.events.length;
-    const ev: JourneyEvent = { id: `${this.runId}:e${seq}`, seq, step: this.step, t: Date.now() - this.started, type, url, ...fields };
+    const ev: JourneyEvent = {
+      id: `${this.runId}:e${seq}`,
+      seq,
+      step: this.step,
+      t: Date.now() - this.started,
+      type,
+      url,
+      ...fields,
+    };
     this.events.push(ev);
     return ev;
   }
@@ -77,8 +106,10 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
   // Safety: the buyer may only ever load the origin the user supplied.
   await context.route('**/*', (route) => {
     const u = route.request().url();
-    if (u.startsWith('data:') || u.startsWith('blob:') || new URL(u).origin === startOrigin) return route.continue();
-    if (route.request().isNavigationRequest()) rec.add('blocked_offsite', currentUrl, { detail: new URL(u).origin });
+    if (u.startsWith('data:') || u.startsWith('blob:') || new URL(u).origin === startOrigin)
+      return route.continue();
+    if (route.request().isNavigationRequest())
+      rec.add('blocked_offsite', currentUrl, { detail: new URL(u).origin });
     return route.abort('blockedbyclient');
   });
   if (o.trace !== 'off') await context.tracing.start({ screenshots: true, snapshots: true, title: o.runId });
@@ -87,17 +118,24 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
 
   page.on('console', (msg) => {
     // Resource-load failures are captured precisely by the response/requestfailed hooks.
-    if (msg.type() === 'error' && !/^Failed to load resource/.test(msg.text())) rec.add('console_error', page.url(), { detail: msg.text().slice(0, 300) });
+    if (msg.type() === 'error' && !/^Failed to load resource/.test(msg.text()))
+      rec.add('console_error', page.url(), { detail: msg.text().slice(0, 300) });
   });
-  page.on('pageerror', (err) => rec.add('page_error', page.url(), { detail: String(err.message).slice(0, 300) }));
+  page.on('pageerror', (err) =>
+    rec.add('page_error', page.url(), { detail: String(err.message).slice(0, 300) }),
+  );
   page.on('requestfailed', (req) => {
     const failure = req.failure()?.errorText ?? 'failed';
-    if (!/blockedbyclient|ERR_ABORTED/i.test(failure)) rec.add('request_failed', page.url(), { detail: `${req.method()} ${req.url()} ${failure}` });
+    if (!/blockedbyclient|ERR_ABORTED/i.test(failure))
+      rec.add('request_failed', page.url(), { detail: `${req.method()} ${req.url()} ${failure}` });
   });
   page.on('response', (res) => {
     // 4xx on a form POST is validation (captured as form_error); count server errors and dead links.
     const st = res.status();
-    if (res.request().resourceType() === 'document' && (st >= 500 || ((st === 404 || st === 410) && res.request().method() === 'GET'))) {
+    if (
+      res.request().resourceType() === 'document' &&
+      (st >= 500 || ((st === 404 || st === 410) && res.request().method() === 'GET'))
+    ) {
       rec.add('http_error', res.url(), { detail: `HTTP ${res.status()}`, data: { status: res.status() } });
     }
   });
@@ -145,10 +183,17 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
       rec.add('observe', obs.url, {
         detail: obs.title,
         screenshot,
-        data: { headings: obs.headings.slice(0, 4), elements: obs.elements.length, modal: obs.modalOpen, scrollY: obs.scrollY, alerts: obs.alerts },
+        data: {
+          headings: obs.headings.slice(0, 4),
+          elements: obs.elements.length,
+          modal: obs.modalOpen,
+          scrollY: obs.scrollY,
+          alerts: obs.alerts,
+        },
       });
       const alertKey = obs.alerts.join('|');
-      if (alertKey && alertKey !== lastAlerts) for (const a of obs.alerts) rec.add('form_error', obs.url, { detail: a });
+      if (alertKey && alertKey !== lastAlerts)
+        for (const a of obs.alerts) rec.add('form_error', obs.url, { detail: a });
       lastAlerts = alertKey;
 
       // Perception updates (what the buyer has now actually seen).
@@ -164,31 +209,63 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
         if (dm && !memory.distrustSeen.includes(dm)) memory.distrustSeen.push(dm);
       }
       const loginOnly = obs.elements.some((e) => e.kind === 'submit' && /sign ?in|log ?in/i.test(e.text));
-      if (!loginOnly && obs.elements.some((e) => e.inputType === 'password' && !e.blocked)) mark('signup_started', obs.url);
-      if (checkoutRe.test(pathOf(obs.url)) || obs.elements.some((e) => /card|cc-number/i.test(`${e.name} ${e.label}`))) mark('checkout_started', obs.url);
+      if (!loginOnly && obs.elements.some((e) => e.inputType === 'password' && !e.blocked))
+        mark('signup_started', obs.url);
+      if (
+        checkoutRe.test(pathOf(obs.url)) ||
+        obs.elements.some((e) => /card|cc-number/i.test(`${e.name} ${e.label}`))
+      )
+        mark('checkout_started', obs.url);
 
-      if ((successRe.url && successRe.url.test(obs.url)) || (successRe.text && successRe.text.test(pageText))) {
+      if (
+        (successRe.url && successRe.url.test(obs.url)) ||
+        (successRe.text && successRe.text.test(pageText))
+      ) {
         mark('goal_completed', obs.url);
         rec.add('goal_complete', obs.url, { screenshot });
         status = 'completed';
         break;
       }
 
-      const { action, meta } = await o.policy.decide({ brief: o.brief, obs, memory, step: rec.step, maxSteps: o.maxSteps });
-      const target = 'idx' in action && action.idx !== undefined ? obs.elements.find((e) => e.idx === action.idx) : undefined;
-      rec.add('decision', obs.url, { target: describe(target), detail: action.reason, data: { action: action.kind, policy: o.policy.name, ...meta } });
-      memory.actions.push({ step: rec.step, kind: action.kind, target: describe(target), url: pathOf(obs.url) });
+      const { action, meta } = await o.policy.decide({
+        brief: o.brief,
+        obs,
+        memory,
+        step: rec.step,
+        maxSteps: o.maxSteps,
+      });
+      const target =
+        'idx' in action && action.idx !== undefined
+          ? obs.elements.find((e) => e.idx === action.idx)
+          : undefined;
+      rec.add('decision', obs.url, {
+        target: describe(target),
+        detail: action.reason,
+        data: { action: action.kind, policy: o.policy.name, ...meta },
+      });
+      memory.actions.push({
+        step: rec.step,
+        kind: action.kind,
+        target: describe(target),
+        url: pathOf(obs.url),
+      });
 
       if (action.kind === 'abandon') {
         status = 'abandoned';
         abandonReason = action.reason;
         objection = action.objection;
-        if (action.objection) rec.add('objection', obs.url, { target: action.objection, detail: action.reason });
-        rec.add('abandon', obs.url, { detail: action.reason, screenshot, data: { objection: action.objection } });
+        if (action.objection)
+          rec.add('objection', obs.url, { target: action.objection, detail: action.reason });
+        rec.add('abandon', obs.url, {
+          detail: action.reason,
+          screenshot,
+          data: { objection: action.objection },
+        });
         break;
       }
       await execute(page, action, obs, rec, memory);
-      if (action.kind === 'click' && target && KW.cta.test(target.text)) mark('cta_discovered', obs.url, target.text);
+      if (action.kind === 'click' && target && KW.cta.test(target.text))
+        mark('cta_discovered', obs.url, target.text);
       await page.waitForLoadState('domcontentloaded', { timeout: 5_000 }).catch(() => undefined);
     }
     if (status === 'step_limit') {
@@ -204,14 +281,18 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
       rec.add('provider_error', page.url(), { detail: err.message });
     } else {
       status = 'error';
-      rec.add('error', page.url(), { detail: String(err instanceof Error ? err.message : err).slice(0, 400) });
+      rec.add('error', page.url(), {
+        detail: String(err instanceof Error ? err.message : err).slice(0, 400),
+      });
     }
   } finally {
     rec.step = Math.min(rec.step, o.maxSteps);
     const keepTrace = o.trace === 'all' || (o.trace === 'failed' && status !== 'completed');
     if (o.trace !== 'off') {
       tracePath = keepTrace ? 'trace.zip' : undefined;
-      await context.tracing.stop(keepTrace ? { path: join(o.outDir, 'trace.zip') } : undefined).catch(() => undefined);
+      await context.tracing
+        .stop(keepTrace ? { path: join(o.outDir, 'trace.zip') } : undefined)
+        .catch(() => undefined);
     }
     await context.close().catch(() => undefined);
   }
@@ -241,7 +322,13 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
   };
 }
 
-async function execute(page: Page, action: Action, obs: Observation, rec: Recorder, memory: ReturnType<typeof newMemory>): Promise<void> {
+async function execute(
+  page: Page,
+  action: Action,
+  obs: Observation,
+  rec: Recorder,
+  memory: ReturnType<typeof newMemory>,
+): Promise<void> {
   const el = (idx: number) => page.locator(`[data-ba-idx="${idx}"]`).first();
   const path = pathOf(obs.url);
   switch (action.kind) {
@@ -252,7 +339,10 @@ async function execute(page: Page, action: Action, obs: Observation, rec: Record
       try {
         await el(action.idx).click({ timeout: 4_000 });
       } catch (err) {
-        rec.add('error', obs.url, { target: describe(info), detail: `click failed: ${String(err instanceof Error ? err.message : err).split('\n')[0]}` });
+        rec.add('error', obs.url, {
+          target: describe(info),
+          detail: `click failed: ${String(err instanceof Error ? err.message : err).split('\n')[0]}`,
+        });
       }
       return;
     }
@@ -260,13 +350,18 @@ async function execute(page: Page, action: Action, obs: Observation, rec: Record
       memory.modalsDismissed++;
       const info = action.idx !== undefined ? obs.elements.find((e) => e.idx === action.idx) : undefined;
       rec.add('dismiss_modal', obs.url, { target: describe(info), detail: obs.headings[0] });
-      if (action.idx !== undefined) await el(action.idx).click({ timeout: 4_000 }).catch(() => page.keyboard.press('Escape'));
+      if (action.idx !== undefined)
+        await el(action.idx)
+          .click({ timeout: 4_000 })
+          .catch(() => page.keyboard.press('Escape'));
       else await page.keyboard.press('Escape');
       return;
     }
     case 'scroll': {
       memory.scrolls[path] = (memory.scrolls[path] ?? 0) + 1;
-      const y = await page.evaluate(`(() => { window.scrollBy(0, Math.round(innerHeight * 0.9)); return Math.round(scrollY); })()`);
+      const y = await page.evaluate(
+        `(() => { window.scrollBy(0, Math.round(innerHeight * 0.9)); return Math.round(scrollY); })()`,
+      );
       memory.depth[path] = Math.max(memory.depth[path] ?? 0, Number(y));
       rec.add('scroll', obs.url, { data: { scrollY: y } });
       return;
@@ -283,23 +378,46 @@ async function execute(page: Page, action: Action, obs: Observation, rec: Record
         if (!info) continue;
         const isCard = /card|cc-number/i.test(`${info.name} ${info.label}`);
         // Guard: only a test card number printed by the site itself may ever be typed.
-        const safeValue = isCard && !(info.hint ?? '').replace(/\D/g, '').includes(f.value.replace(/\D/g, '')) ? '' : f.value;
-        const masked = info.inputType === 'password' ? '•'.repeat(Math.min(12, safeValue.length)) : isCard ? '•••• test card' : safeValue;
-        rec.add('fill', obs.url, { target: describe(info), detail: masked, data: { strongPassword: info.inputType === 'password' ? /[^A-Za-z0-9]/.test(safeValue) && safeValue.length >= 10 : undefined } });
+        const safeValue =
+          isCard && !(info.hint ?? '').replace(/\D/g, '').includes(f.value.replace(/\D/g, '')) ? '' : f.value;
+        const masked =
+          info.inputType === 'password'
+            ? '•'.repeat(Math.min(12, safeValue.length))
+            : isCard
+              ? '•••• test card'
+              : safeValue;
+        rec.add('fill', obs.url, {
+          target: describe(info),
+          detail: masked,
+          data: {
+            strongPassword:
+              info.inputType === 'password'
+                ? /[^A-Za-z0-9]/.test(safeValue) && safeValue.length >= 10
+                : undefined,
+          },
+        });
         try {
           if (info.kind === 'select') await el(f.idx).selectOption({ label: safeValue });
           else if (info.kind === 'checkbox') await el(f.idx).check();
           else await el(f.idx).fill(safeValue);
         } catch (err) {
-          rec.add('error', obs.url, { target: describe(info), detail: `fill failed: ${String(err instanceof Error ? err.message : err).split('\n')[0]}` });
+          rec.add('error', obs.url, {
+            target: describe(info),
+            detail: `fill failed: ${String(err instanceof Error ? err.message : err).split('\n')[0]}`,
+          });
         }
       }
       const submit = obs.elements.find((e) => e.idx === action.submitIdx);
       rec.add('submit', obs.url, { target: describe(submit) });
       const before = obs.alerts.length;
-      await el(action.submitIdx).click({ timeout: 4_000 }).catch(() => undefined);
+      await el(action.submitIdx)
+        .click({ timeout: 4_000 })
+        .catch(() => undefined);
       await page.waitForLoadState('domcontentloaded', { timeout: 5_000 }).catch(() => undefined);
-      const after = await page.locator('[role="alert"],.error').count().catch(() => 0);
+      const after = await page
+        .locator('[role="alert"],.error')
+        .count()
+        .catch(() => 0);
       if (after > 0 && after >= before) memory.formErrors++;
       return;
     }

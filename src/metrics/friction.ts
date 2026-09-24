@@ -34,13 +34,21 @@ interface Detector {
   title: string;
   lens: FrictionCluster['lens'];
   severity: Severity;
-  detect(run: RunRecord, m: RunMetrics, ctx: { medianSteps: number | null }): { evidence: JourneyEvent[]; detail: string } | null;
+  detect(
+    run: RunRecord,
+    m: RunMetrics,
+    ctx: { medianSteps: number | null },
+  ): { evidence: JourneyEvent[]; detail: string } | null;
 }
 
 const lastDecisions = (run: RunRecord, n = 3) => run.events.filter((e) => e.type === 'decision').slice(-n);
 const ofType = (run: RunRecord, ...t: JourneyEvent['type'][]) => run.events.filter((e) => t.includes(e.type));
-const abandonEv = (run: RunRecord) => run.events.filter((e) => e.type === 'abandon' || e.type === 'objection');
-const byObjection = (slug: RegExp) => (run: RunRecord) => (run.objection && slug.test(run.objection) ? { evidence: abandonEv(run), detail: run.abandon_reason ?? run.objection } : null);
+const abandonEv = (run: RunRecord) =>
+  run.events.filter((e) => e.type === 'abandon' || e.type === 'objection');
+const byObjection = (slug: RegExp) => (run: RunRecord) =>
+  run.objection && slug.test(run.objection)
+    ? { evidence: abandonEv(run), detail: run.abandon_reason ?? run.objection }
+    : null;
 
 /**
  * Deterministic detectors. Each one reads recorded events only; a detector that cannot
@@ -56,7 +64,10 @@ export const DETECTORS: Detector[] = [
       if (m.milestones.pricing_found || m.goal_completed) return null;
       const looked = run.events.filter((e) => e.type === 'decision' && /price/i.test(e.detail ?? ''));
       if (looked.length === 0) return null;
-      return { evidence: [...looked.slice(-3), ...abandonEv(run)], detail: `searched for pricing in ${looked.length} decisions without success` };
+      return {
+        evidence: [...looked.slice(-3), ...abandonEv(run)],
+        detail: `searched for pricing in ${looked.length} decisions without success`,
+      };
     },
   },
   {
@@ -66,7 +77,9 @@ export const DETECTORS: Detector[] = [
     severity: 'high',
     detect: (run, m) => {
       if (m.goal_completed || m.milestones.signup_started) return null;
-      const looked = run.events.filter((e) => e.type === 'decision' && /get started|how to get started/i.test(e.detail ?? ''));
+      const looked = run.events.filter(
+        (e) => e.type === 'decision' && /get started|how to get started/i.test(e.detail ?? ''),
+      );
       if (looked.length === 0) return null;
       return { evidence: [...looked.slice(-3), ...abandonEv(run)], detail: 'never reached a sign-up form' };
     },
@@ -107,7 +120,10 @@ export const DETECTORS: Detector[] = [
     detect: (run) => {
       const ev = ofType(run, 'dismiss_modal');
       if (ev.length === 0 && !/popup|pop-up/i.test(run.objection ?? '')) return null;
-      return { evidence: [...ev, ...(/popup/i.test(run.objection ?? '') ? abandonEv(run) : [])], detail: `${ev.length} dismissal attempt(s)` };
+      return {
+        evidence: [...ev, ...(/popup/i.test(run.objection ?? '') ? abandonEv(run) : [])],
+        detail: `${ev.length} dismissal attempt(s)`,
+      };
     },
   },
   {
@@ -136,7 +152,9 @@ export const DETECTORS: Detector[] = [
         seen.add(p);
         return again;
       });
-      return revisits.length ? { evidence: revisits, detail: `${m.navigation_loops} revisit(s), ${m.backtracks} back` } : null;
+      return revisits.length
+        ? { evidence: revisits, detail: `${m.navigation_loops} revisit(s), ${m.backtracks} back` }
+        : null;
     },
   },
   {
@@ -144,7 +162,13 @@ export const DETECTORS: Detector[] = [
     title: 'Buyers ran out of patience (step limit)',
     lens: ['ux', 'business'],
     severity: 'medium',
-    detect: (run) => (run.status === 'step_limit' || run.status === 'timeout' ? { evidence: [...lastDecisions(run), ...ofType(run, 'abandon', 'timeout')], detail: run.abandon_reason ?? run.status } : null),
+    detect: (run) =>
+      run.status === 'step_limit' || run.status === 'timeout'
+        ? {
+            evidence: [...lastDecisions(run), ...ofType(run, 'abandon', 'timeout')],
+            detail: run.abandon_reason ?? run.status,
+          }
+        : null,
   },
   {
     code: 'js_error',
@@ -162,7 +186,9 @@ export const DETECTORS: Detector[] = [
     lens: ['engineering', 'ux'],
     severity: 'medium',
     detect: (run) => {
-      const ev = run.events.filter((e) => e.type === 'http_error' && (e.data?.status === 404 || e.data?.status === 410));
+      const ev = run.events.filter(
+        (e) => e.type === 'http_error' && (e.data?.status === 404 || e.data?.status === 410),
+      );
       return ev.length ? { evidence: ev, detail: ev.map((e) => new URL(e.url).pathname).join(', ') } : null;
     },
   },
@@ -172,7 +198,9 @@ export const DETECTORS: Detector[] = [
     lens: ['engineering'],
     severity: 'high',
     detect: (run) => {
-      const ev = run.events.filter((e) => e.type === 'request_failed' || (e.type === 'http_error' && Number(e.data?.status) >= 500));
+      const ev = run.events.filter(
+        (e) => e.type === 'request_failed' || (e.type === 'http_error' && Number(e.data?.status) >= 500),
+      );
       return ev.length ? { evidence: ev, detail: ev.map((e) => e.detail).join(' / ') } : null;
     },
   },
@@ -182,8 +210,16 @@ export const DETECTORS: Detector[] = [
     lens: ['ux'],
     severity: 'low',
     detect: (run, m, ctx) => {
-      if (!m.goal_completed || ctx.medianSteps === null || m.steps < Math.max(ctx.medianSteps * 1.5, ctx.medianSteps + 3)) return null;
-      return { evidence: run.events.filter((e) => e.type === 'decision'), detail: `${m.steps} steps vs median ${ctx.medianSteps}` };
+      if (
+        !m.goal_completed ||
+        ctx.medianSteps === null ||
+        m.steps < Math.max(ctx.medianSteps * 1.5, ctx.medianSteps + 3)
+      )
+        return null;
+      return {
+        evidence: run.events.filter((e) => e.type === 'decision'),
+        detail: `${m.steps} steps vs median ${ctx.medianSteps}`,
+      };
     },
   },
   {
@@ -192,7 +228,11 @@ export const DETECTORS: Detector[] = [
     lens: ['customer'],
     severity: 'medium',
     detect: (run) => {
-      if (!run.objection || /refund|guarantee|trust|phone|card|price-too-high|budget|popup/i.test(run.objection)) return null;
+      if (
+        !run.objection ||
+        /refund|guarantee|trust|phone|card|price-too-high|budget|popup/i.test(run.objection)
+      )
+        return null;
       return { evidence: abandonEv(run), detail: `${run.objection}: ${run.abandon_reason ?? ''}` };
     },
   },
@@ -225,9 +265,13 @@ export function detectFriction(runs: RunRecord[], metrics: RunMetrics[]): Fricti
   return out;
 }
 
-export function clusterFriction(signals: FrictionSignal[], populationByVariant: Record<string, number>): FrictionCluster[] {
+export function clusterFriction(
+  signals: FrictionSignal[],
+  populationByVariant: Record<string, number>,
+): FrictionCluster[] {
   const groups = new Map<string, FrictionSignal[]>();
-  for (const s of signals) groups.set(`${s.variant}\u0000${s.code}`, [...(groups.get(`${s.variant}\u0000${s.code}`) ?? []), s]);
+  for (const s of signals)
+    groups.set(`${s.variant}\u0000${s.code}`, [...(groups.get(`${s.variant}\u0000${s.code}`) ?? []), s]);
   const clusters: FrictionCluster[] = [];
   for (const [key, sigs] of groups) {
     const [variant, code] = key.split('\u0000') as [string, string];
@@ -255,7 +299,10 @@ export function clusterFriction(signals: FrictionSignal[], populationByVariant: 
     });
   }
   const sev = { critical: 4, high: 3, medium: 2, low: 1 };
-  return clusters.sort((a, b) => b.blocking_runs - a.blocking_runs || b.affected - a.affected || sev[b.severity] - sev[a.severity]);
+  return clusters.sort(
+    (a, b) =>
+      b.blocking_runs - a.blocking_runs || b.affected - a.affected || sev[b.severity] - sev[a.severity],
+  );
 }
 
 /** Evidence index: every event id → event, for validating findings. */

@@ -19,7 +19,9 @@ export interface LlmAuditResult {
   error?: string;
 }
 
-export function parseAuditorOutput(text: string): { ok: true; findings: AuditorFinding[] } | { ok: false; error: string } {
+export function parseAuditorOutput(
+  text: string,
+): { ok: true; findings: AuditorFinding[] } | { ok: false; error: string } {
   const m = text.match(/\{[\s\S]*\}/);
   if (!m) return { ok: false, error: 'no JSON object' };
   let raw: unknown;
@@ -29,7 +31,14 @@ export function parseAuditorOutput(text: string): { ok: true; findings: AuditorF
     return { ok: false, error: 'invalid JSON' };
   }
   const r = AuditorOutputSchema.safeParse(raw);
-  if (!r.success) return { ok: false, error: `schema: ${r.error.issues.map((i) => `${i.path.join('.')} ${i.message}`).slice(0, 2).join('; ')}` };
+  if (!r.success)
+    return {
+      ok: false,
+      error: `schema: ${r.error.issues
+        .map((i) => `${i.path.join('.')} ${i.message}`)
+        .slice(0, 2)
+        .join('; ')}`,
+    };
   return { ok: true, findings: r.data.findings };
 }
 
@@ -37,17 +46,34 @@ export function parseAuditorOutput(text: string): { ok: true; findings: AuditorF
  * Run one auditor through an LLM. On malformed output: one repair attempt, then fall back
  * to the deterministic auditor and flag the result as degraded. Never throws on bad output.
  */
-export async function llmAudit(auditor: Auditor, packet: AuditPacket, provider: ChatProvider, meter: CostMeter): Promise<LlmAuditResult> {
+export async function llmAudit(
+  auditor: Auditor,
+  packet: AuditPacket,
+  provider: ChatProvider,
+  meter: CostMeter,
+): Promise<LlmAuditResult> {
   const data = JSON.stringify(packet);
-  const messages: { role: 'user' | 'assistant'; content: string }[] = [{ role: 'user', content: `DATA:\n${data}` }];
+  const messages: { role: 'user' | 'assistant'; content: string }[] = [
+    { role: 'user', content: `DATA:\n${data}` },
+  ];
   let lastError = '';
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const res = await meteredComplete(provider, meter, { system: SYSTEM(auditor), messages, maxTokens: 1500 });
+      const res = await meteredComplete(provider, meter, {
+        system: SYSTEM(auditor),
+        messages,
+        maxTokens: 1500,
+      });
       const parsed = parseAuditorOutput(res.text);
       if (parsed.ok) return { findings: parsed.findings, degraded: false };
       lastError = parsed.error;
-      messages.push({ role: 'assistant', content: res.text.slice(0, 4000) }, { role: 'user', content: `Your reply was invalid (${parsed.error}). Reply again with valid JSON only.` });
+      messages.push(
+        { role: 'assistant', content: res.text.slice(0, 4000) },
+        {
+          role: 'user',
+          content: `Your reply was invalid (${parsed.error}). Reply again with valid JSON only.`,
+        },
+      );
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
       break;

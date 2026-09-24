@@ -34,7 +34,11 @@ export async function postJson(
   const text = await res.text();
   if (!res.ok) {
     const retryable = res.status === 429 || res.status >= 500;
-    throw new ProviderError(`HTTP ${res.status} from ${host}: ${redact(text.slice(0, 300))}`, retryable, res.status);
+    throw new ProviderError(
+      `HTTP ${res.status} from ${host}: ${redact(text.slice(0, 300))}`,
+      retryable,
+      res.status,
+    );
   }
   try {
     return JSON.parse(text);

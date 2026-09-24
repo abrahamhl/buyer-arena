@@ -44,7 +44,11 @@ export class LlmBuyer implements BuyerPolicy {
 
   async decide(ctx: DecideContext): Promise<{ action: Action; meta?: Record<string, unknown> }> {
     const prompt = renderObservation(ctx);
-    const req = { system: SYSTEM, messages: [{ role: 'user' as const, content: prompt }], maxTokens: this.o.maxTokens ?? 300 };
+    const req = {
+      system: SYSTEM,
+      messages: [{ role: 'user' as const, content: prompt }],
+      maxTokens: this.o.maxTokens ?? 300,
+    };
     const res = await meteredComplete(this.o.provider, this.o.meter, req, { onUsage: this.o.onUsage }); // Budget/provider errors propagate to the runner.
     const parsed = parseAction(res.text, ctx);
     if (!parsed.ok) {
@@ -52,7 +56,10 @@ export class LlmBuyer implements BuyerPolicy {
       const fb = await this.fallback.decide(ctx);
       return { action: fb.action, meta: { ...fb.meta, llm_fallback: parsed.error } };
     }
-    return { action: parsed.action, meta: { tokens_in: res.usage.input_tokens, tokens_out: res.usage.output_tokens } };
+    return {
+      action: parsed.action,
+      meta: { tokens_in: res.usage.input_tokens, tokens_out: res.usage.output_tokens },
+    };
   }
 }
 
@@ -62,7 +69,16 @@ export function renderObservation(ctx: DecideContext): string {
     .filter((e) => !e.blocked || e.region === 'dialog')
     .slice(0, 60)
     .map((e) => {
-      const bits = [`[${e.idx}] ${e.kind}`, e.text && `"${e.text}"`, e.label && `label="${e.label}"`, e.inputType && `type=${e.inputType}`, e.required && 'required', e.hint && `hint="${e.hint}"`, e.options && `options=${JSON.stringify(e.options)}`, `(${e.region})`];
+      const bits = [
+        `[${e.idx}] ${e.kind}`,
+        e.text && `"${e.text}"`,
+        e.label && `label="${e.label}"`,
+        e.inputType && `type=${e.inputType}`,
+        e.required && 'required',
+        e.hint && `hint="${e.hint}"`,
+        e.options && `options=${JSON.stringify(e.options)}`,
+        `(${e.region})`,
+      ];
       return bits.filter(Boolean).join(' ');
     });
   const text = seenBlocks(obs, memory)
@@ -74,7 +90,12 @@ export function renderObservation(ctx: DecideContext): string {
     `STORY: ${brief.story}`,
     `TASK: ${brief.task}`,
     `STEP ${ctx.step} of at most ${ctx.maxSteps}.`,
-    `RECENT ACTIONS: ${memory.actions.slice(-6).map((a) => `${a.kind} ${a.target ?? ''} @${a.url}`).join('; ') || 'none'}`,
+    `RECENT ACTIONS: ${
+      memory.actions
+        .slice(-6)
+        .map((a) => `${a.kind} ${a.target ?? ''} @${a.url}`)
+        .join('; ') || 'none'
+    }`,
     `PAGE: ${obs.title} (${new URL(obs.url).pathname})${obs.modalOpen ? ' — a pop-up dialog is open' : ''}`,
     obs.alerts.length ? `ERRORS ON PAGE: ${obs.alerts.join(' / ')}` : '',
     `VISIBLE TEXT: ${text}`,
@@ -85,7 +106,10 @@ export function renderObservation(ctx: DecideContext): string {
     .join('\n');
 }
 
-export function parseAction(text: string, ctx: DecideContext): { ok: true; action: Action } | { ok: false; error: string } {
+export function parseAction(
+  text: string,
+  ctx: DecideContext,
+): { ok: true; action: Action } | { ok: false; error: string } {
   const m = text.match(/\{[\s\S]*\}/);
   if (!m) return { ok: false, error: 'no JSON object in response' };
   let raw: unknown;
@@ -100,12 +124,26 @@ export function parseAction(text: string, ctx: DecideContext): { ok: true; actio
   const exists = (i?: number) => i !== undefined && ctx.obs.elements.some((e) => e.idx === i);
   switch (a.action) {
     case 'click':
-      return exists(a.target) ? { ok: true, action: { kind: 'click', idx: a.target as number, reason: a.reason } } : { ok: false, error: 'click target does not exist' };
+      return exists(a.target)
+        ? { ok: true, action: { kind: 'click', idx: a.target as number, reason: a.reason } }
+        : { ok: false, error: 'click target does not exist' };
     case 'dismiss':
-      return { ok: true, action: { kind: 'dismiss', idx: exists(a.target) ? a.target : undefined, reason: a.reason } };
+      return {
+        ok: true,
+        action: { kind: 'dismiss', idx: exists(a.target) ? a.target : undefined, reason: a.reason },
+      };
     case 'fill_form':
-      if (!exists(a.submit) || !a.fields?.length || !a.fields.every((f) => exists(f.target))) return { ok: false, error: 'fill_form references unknown elements' };
-      return { ok: true, action: { kind: 'fill_form', fields: a.fields.map((f) => ({ idx: f.target, value: f.value })), submitIdx: a.submit as number, reason: a.reason } };
+      if (!exists(a.submit) || !a.fields?.length || !a.fields.every((f) => exists(f.target)))
+        return { ok: false, error: 'fill_form references unknown elements' };
+      return {
+        ok: true,
+        action: {
+          kind: 'fill_form',
+          fields: a.fields.map((f) => ({ idx: f.target, value: f.value })),
+          submitIdx: a.submit as number,
+          reason: a.reason,
+        },
+      };
     case 'scroll':
       return { ok: true, action: { kind: 'scroll', reason: a.reason } };
     case 'back':
@@ -114,4 +152,3 @@ export function parseAction(text: string, ctx: DecideContext): { ok: true; actio
       return { ok: true, action: { kind: 'abandon', reason: a.reason, objection: a.objection } };
   }
 }
-

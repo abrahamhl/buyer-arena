@@ -5,7 +5,11 @@ import type { ChatProvider, ChatRequest, ChatResponse, ModelPricing } from './ty
 interface OpenAIResponse {
   model?: string;
   choices?: { message?: { content?: string } }[];
-  usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } };
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    prompt_tokens_details?: { cached_tokens?: number };
+  };
 }
 
 /** Works with OpenAI, LM Studio, Ollama (/v1), vLLM, llama.cpp server and other compatible endpoints. */

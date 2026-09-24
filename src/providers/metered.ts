@@ -55,7 +55,12 @@ export class CostMeter {
       latency_ms: 0,
       estimated_cost_usd: 0,
     };
-    const cost = costUsd(provider.pricing, res.usage.input_tokens, res.usage.output_tokens, res.usage.cached_tokens);
+    const cost = costUsd(
+      provider.pricing,
+      res.usage.input_tokens,
+      res.usage.output_tokens,
+      res.usage.cached_tokens,
+    );
     const next: Usage = {
       ...prev,
       calls: prev.calls + 1,

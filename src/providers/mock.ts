@@ -21,7 +21,8 @@ export class MockProvider implements ChatProvider {
   async complete(req: ChatRequest): Promise<ChatResponse> {
     const i = this.calls++;
     const out = this.responder(req, i);
-    if (out instanceof Error) throw out instanceof ProviderError ? out : new ProviderError(out.message, false);
+    if (out instanceof Error)
+      throw out instanceof ProviderError ? out : new ProviderError(out.message, false);
     const input = req.system + req.messages.map((m) => m.content).join('\n');
     return {
       text: out,

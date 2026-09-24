@@ -25,7 +25,8 @@ export const PLAYBOOK: Record<string, Play> = {
   },
   cta_not_found: {
     likely_cause: 'the primary call-to-action is vague or not visible without scrolling',
-    experiment: 'Replace the generic hero CTA with an explicit action ("Start free trial") and repeat it in the header.',
+    experiment:
+      'Replace the generic hero CTA with an explicit action ("Start free trial") and repeat it in the header.',
     effort: 'low',
     reversibility: 0.95,
     testability: 0.9,
@@ -60,7 +61,8 @@ export const PLAYBOOK: Record<string, Play> = {
   },
   intrusive_modal: {
     likely_cause: 'a pop-up interrupts the first visit and can be hard to dismiss (especially on phones)',
-    experiment: 'Delay the pop-up until engagement (or remove it) and guarantee a visible close button on small screens.',
+    experiment:
+      'Delay the pop-up until engagement (or remove it) and guarantee a visible close button on small screens.',
     effort: 'low',
     reversibility: 0.95,
     testability: 0.95,
@@ -124,4 +126,10 @@ export const PLAYBOOK: Record<string, Play> = {
 };
 
 export const playFor = (code: string): Play =>
-  PLAYBOOK[code] ?? { likely_cause: 'unclear', experiment: 'Investigate the linked journeys.', effort: 'medium', reversibility: 0.7, testability: 0.5 };
+  PLAYBOOK[code] ?? {
+    likely_cause: 'unclear',
+    experiment: 'Investigate the linked journeys.',
+    effort: 'medium',
+    reversibility: 0.7,
+    testability: 0.5,
+  };

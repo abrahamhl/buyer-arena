@@ -1,6 +1,7 @@
 import type { Page } from 'playwright';
 
-export type ElementKind = 'link' | 'button' | 'submit' | 'input' | 'select' | 'checkbox' | 'radio' | 'textarea';
+export type ElementKind =
+  'link' | 'button' | 'submit' | 'input' | 'select' | 'checkbox' | 'radio' | 'textarea';
 export type Region = 'nav' | 'header' | 'menu' | 'main' | 'footer' | 'dialog';
 
 export interface ElementInfo {
@@ -147,7 +148,8 @@ export async function observe(page: Page): Promise<Observation> {
   return (await page.evaluate(OBSERVE_SCRIPT)) as Observation;
 }
 
-export const PRICE_RE = /(?:[€$£]\s?(\d{1,5}(?:[.,]\d{1,2})?))|(?:(\d{1,5}(?:[.,]\d{1,2})?)\s?(?:€|EUR|USD|GBP)\b)/g;
+export const PRICE_RE =
+  /(?:[€$£]\s?(\d{1,5}(?:[.,]\d{1,2})?))|(?:(\d{1,5}(?:[.,]\d{1,2})?)\s?(?:€|EUR|USD|GBP)\b)/g;
 
 export function extractPrices(text: string): number[] {
   const out: number[] = [];

@@ -70,7 +70,9 @@ export const pathOf = (url: string): string => {
 /** Text blocks the buyer has actually had on screen on this page (respects scroll depth). */
 export function seenBlocks(obs: Observation, memory: BuyerMemory): TextBlock[] {
   const depth = Math.max(obs.scrollY, memory.depth[pathOf(obs.url)] ?? 0) + obs.viewport.height;
-  return obs.blocks.filter((b) => b.y < depth && (!obs.modalOpen || b.region === 'dialog' || b.y < obs.viewport.height));
+  return obs.blocks.filter(
+    (b) => b.y < depth && (!obs.modalOpen || b.region === 'dialog' || b.y < obs.viewport.height),
+  );
 }
 
 export function seenElements(obs: Observation, memory: BuyerMemory): ElementInfo[] {

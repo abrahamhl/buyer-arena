@@ -32,7 +32,12 @@ const PLANS = [
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-function layout(v: DemoVariant, title: string, body: string, opts: { modal?: boolean; script?: string } = {}): string {
+function layout(
+  v: DemoVariant,
+  title: string,
+  body: string,
+  opts: { modal?: boolean; script?: string } = {},
+): string {
   const nav =
     v === 'baseline'
       ? `<a href="/features">Product</a><a href="/customers">Customers</a><a href="/resources">Resources</a><a href="/login">Sign in</a>`
@@ -74,10 +79,19 @@ input,select{padding:10px;border:1px solid #c9c3b8;border-radius:8px;font:inheri
 ${modal}${opts.script ? `<script>${opts.script}</script>` : ''}</body></html>`;
 }
 
-function page(v: DemoVariant, path: string, q: URLSearchParams, form: URLSearchParams | null, cookie: string): { status: number; html: string } {
+function page(
+  v: DemoVariant,
+  path: string,
+  q: URLSearchParams,
+  form: URLSearchParams | null,
+  cookie: string,
+): { status: number; html: string } {
   const planOptions = (selected: string) =>
     PLANS.filter((p) => p.price !== null)
-      .map((p) => `<option value="${p.id}"${p.id === selected ? ' selected' : ''}>${p.name} — €${p.price}/month</option>`)
+      .map(
+        (p) =>
+          `<option value="${p.id}"${p.id === selected ? ' selected' : ''}>${p.name} — €${p.price}/month</option>`,
+      )
       .join('');
 
   switch (path) {
@@ -95,7 +109,10 @@ function page(v: DemoVariant, path: string, q: URLSearchParams, form: URLSearchP
         <div class="card"><h3>Automatic reminders</h3><p>Stop chasing late payers by hand.</p></div>
         <div class="card"><h3>Branded invoices</h3><p>Look professional from day one.</p></div>
         <div class="card"><h3>Accountant export</h3><p>One-click export for your bookkeeper.</p></div></div><div class="spacer"></div>`;
-      return { status: 200, html: layout(v, 'Home', body, { modal: v === 'candidate' && !/nl=1/.test(cookie) }) };
+      return {
+        status: 200,
+        html: layout(v, 'Home', body, { modal: v === 'candidate' && !/nl=1/.test(cookie) }),
+      };
     }
     case '/features': {
       const body =
@@ -113,7 +130,9 @@ function page(v: DemoVariant, path: string, q: URLSearchParams, form: URLSearchP
     }
     case '/pricing': {
       const cards = PLANS.map(
-        (p) => `<div class="card"><h3>${p.name}</h3><div class="price">${p.price === null ? 'Contact sales' : `€${p.price}<span class="muted">/month</span>`}</div>
+        (
+          p,
+        ) => `<div class="card"><h3>${p.name}</h3><div class="price">${p.price === null ? 'Contact sales' : `€${p.price}<span class="muted">/month</span>`}</div>
           <p>${p.blurb}</p>${p.price === null ? `<a class="btn" href="/demo">Talk to sales</a>` : `<a class="btn${v === 'candidate' ? ' primary' : ''}" href="/signup?plan=${p.id}">${v === 'baseline' ? 'Select' : `Start free trial`}</a>`}</div>`,
       ).join('');
       const trust =
@@ -124,7 +143,15 @@ function page(v: DemoVariant, path: string, q: URLSearchParams, form: URLSearchP
         v === 'baseline'
           ? `var cfg=window.__pricingConfig;document.querySelectorAll('.price').forEach(function(el){el.dataset.c=cfg.currency.code});`
           : undefined;
-      return { status: 200, html: layout(v, 'Pricing', `<h1>${v === 'baseline' ? 'Plans &amp; billing' : 'Simple pricing'}</h1>${trust}<div class="grid">${cards}</div>`, { script }) };
+      return {
+        status: 200,
+        html: layout(
+          v,
+          'Pricing',
+          `<h1>${v === 'baseline' ? 'Plans &amp; billing' : 'Simple pricing'}</h1>${trust}<div class="grid">${cards}</div>`,
+          { script },
+        ),
+      };
     }
     case '/signup': {
       const plan = form?.get('plan') ?? q.get('plan') ?? 'starter';
@@ -133,14 +160,23 @@ function page(v: DemoVariant, path: string, q: URLSearchParams, form: URLSearchP
         const email = form.get('email') ?? '';
         const pw = form.get('password') ?? '';
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) errors.push('Please enter a valid email address.');
-        if (pw.length < 10 || !/\d/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) errors.push('Password must be at least 10 characters and include a number and a symbol.');
+        if (pw.length < 10 || !/\d/.test(pw) || !/[^A-Za-z0-9]/.test(pw))
+          errors.push('Password must be at least 10 characters and include a number and a symbol.');
         if (v === 'baseline' && !(form.get('company') ?? '').trim()) errors.push('Company name is required.');
         if (v === 'baseline' && !(form.get('phone') ?? '').trim()) errors.push('Phone number is required.');
         if (errors.length === 0) {
-          return { status: 303, html: v === 'baseline' ? `/checkout?plan=${encodeURIComponent(plan)}` : `/success?plan=${encodeURIComponent(plan)}` };
+          return {
+            status: 303,
+            html:
+              v === 'baseline'
+                ? `/checkout?plan=${encodeURIComponent(plan)}`
+                : `/success?plan=${encodeURIComponent(plan)}`,
+          };
         }
       }
-      const errorBox = errors.length ? `<div class="error" role="alert">${errors.map(esc).join('<br>')}</div>` : '';
+      const errorBox = errors.length
+        ? `<div class="error" role="alert">${errors.map(esc).join('<br>')}</div>`
+        : '';
       const fields =
         v === 'baseline'
           ? `<label>Work email<input name="email" type="email" required></label>
@@ -157,15 +193,27 @@ function page(v: DemoVariant, path: string, q: URLSearchParams, form: URLSearchP
              <p class="muted">No card required · Cancel anytime</p>`;
       return {
         status: errors.length ? 422 : 200,
-        html: layout(v, 'Sign up', `<h1>${v === 'baseline' ? 'Create your account' : 'Start your 14-day free trial'}</h1>${errorBox}<form method="post" action="/signup" novalidate>${fields}</form>`),
+        html: layout(
+          v,
+          'Sign up',
+          `<h1>${v === 'baseline' ? 'Create your account' : 'Start your 14-day free trial'}</h1>${errorBox}<form method="post" action="/signup" novalidate>${fields}</form>`,
+        ),
       };
     }
     case '/checkout': {
       const plan = form?.get('plan') ?? q.get('plan') ?? 'starter';
       if (form) {
         const card = (form.get('card') ?? '').replace(/\s/g, '');
-        if (card === '4242424242424242') return { status: 303, html: `/success?plan=${encodeURIComponent(plan)}` };
-        return { status: 422, html: layout(v, 'Payment', `<h1>Payment details</h1><div class="error" role="alert">Card was declined.</div><p><a href="/checkout?plan=${esc(plan)}">Try again</a></p>`) };
+        if (card === '4242424242424242')
+          return { status: 303, html: `/success?plan=${encodeURIComponent(plan)}` };
+        return {
+          status: 422,
+          html: layout(
+            v,
+            'Payment',
+            `<h1>Payment details</h1><div class="error" role="alert">Card was declined.</div><p><a href="/checkout?plan=${esc(plan)}">Try again</a></p>`,
+          ),
+        };
       }
       return {
         status: 200,
@@ -181,31 +229,78 @@ function page(v: DemoVariant, path: string, q: URLSearchParams, form: URLSearchP
       };
     }
     case '/success':
-      return { status: 200, html: layout(v, 'Welcome', `<h1>You're all set 🎉</h1><p class="lead">Your trial is active. Send your first invoice in under two minutes.</p>`) };
-    case '/demo': {
-      if (form) return { status: 200, html: layout(v, 'Demo requested', `<h1>Thanks!</h1><p>Our sales team will contact you within 3 business days.</p>`) };
       return {
         status: 200,
-        html: layout(v, 'Request a demo', `<h1>Talk to our sales team</h1><form method="post" action="/demo" novalidate>
+        html: layout(
+          v,
+          'Welcome',
+          `<h1>You're all set 🎉</h1><p class="lead">Your trial is active. Send your first invoice in under two minutes.</p>`,
+        ),
+      };
+    case '/demo': {
+      if (form)
+        return {
+          status: 200,
+          html: layout(
+            v,
+            'Demo requested',
+            `<h1>Thanks!</h1><p>Our sales team will contact you within 3 business days.</p>`,
+          ),
+        };
+      return {
+        status: 200,
+        html: layout(
+          v,
+          'Request a demo',
+          `<h1>Talk to our sales team</h1><form method="post" action="/demo" novalidate>
           <label>Work email<input name="email" type="email" required></label><label>Phone number *<input name="phone" type="tel" required></label>
           <label>Company size<select name="size"><option>1-10</option><option>11-50</option><option>51+</option></select></label>
-          <button class="btn" type="submit">Request demo</button></form>`),
+          <button class="btn" type="submit">Request demo</button></form>`,
+        ),
       };
     }
     case '/customers':
-      return { status: 200, html: layout(v, 'Customers', `<h1>Customers</h1><p class="lead">Studios, freelancers and agencies across Europe use Tallybird.</p><div class="grid"><div class="card">“We stopped chasing invoices.” — a design studio</div><div class="card">“Setup took an afternoon.” — a consultancy</div></div>`) };
+      return {
+        status: 200,
+        html: layout(
+          v,
+          'Customers',
+          `<h1>Customers</h1><p class="lead">Studios, freelancers and agencies across Europe use Tallybird.</p><div class="grid"><div class="card">“We stopped chasing invoices.” — a design studio</div><div class="card">“Setup took an afternoon.” — a consultancy</div></div>`,
+        ),
+      };
     case '/resources':
-      return { status: 200, html: layout(v, 'Resources', `<h1>Resources</h1><ul><li><a href="/resources/guide">Guide: invoicing basics</a></li><li><a href="/resources/api">API reference</a></li></ul>`) };
+      return {
+        status: 200,
+        html: layout(
+          v,
+          'Resources',
+          `<h1>Resources</h1><ul><li><a href="/resources/guide">Guide: invoicing basics</a></li><li><a href="/resources/api">API reference</a></li></ul>`,
+        ),
+      };
     case '/privacy':
     case '/terms':
       return {
         status: 200,
-        html: layout(v, path.slice(1), `<h1>${path === '/terms' ? 'Terms of service' : 'Privacy policy'}</h1><p>This fictional demo store stores nothing. ${v === 'candidate' && path === '/terms' ? 'Paid plans include a 30-day money-back guarantee.' : 'Fees are non-refundable except where required by law.'}</p>`),
+        html: layout(
+          v,
+          path.slice(1),
+          `<h1>${path === '/terms' ? 'Terms of service' : 'Privacy policy'}</h1><p>This fictional demo store stores nothing. ${v === 'candidate' && path === '/terms' ? 'Paid plans include a 30-day money-back guarantee.' : 'Fees are non-refundable except where required by law.'}</p>`,
+        ),
       };
     case '/login':
-      return { status: 200, html: layout(v, 'Sign in', `<h1>Sign in</h1><form method="post" action="/login" novalidate><label>Email<input name="email" type="email"></label><label>Password<input name="password" type="password"></label><button class="btn" type="submit">Sign in</button></form><p class="muted">New here? <a href="/signup">Create an account</a></p>`) };
+      return {
+        status: 200,
+        html: layout(
+          v,
+          'Sign in',
+          `<h1>Sign in</h1><form method="post" action="/login" novalidate><label>Email<input name="email" type="email"></label><label>Password<input name="password" type="password"></label><button class="btn" type="submit">Sign in</button></form><p class="muted">New here? <a href="/signup">Create an account</a></p>`,
+        ),
+      };
     default:
-      return { status: 404, html: layout(v, 'Not found', `<h1>Page not found</h1><p><a href="/">Go home</a></p>`) };
+      return {
+        status: 404,
+        html: layout(v, 'Not found', `<h1>Page not found</h1><p><a href="/">Go home</a></p>`),
+      };
   }
 }
 
@@ -233,7 +328,9 @@ export function createDemoHandler(variant: DemoVariant) {
       res.writeHead(303, { location: out.html }).end();
       return;
     }
-    res.writeHead(out.status, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }).end(out.html);
+    res
+      .writeHead(out.status, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+      .end(out.html);
   };
 }
 

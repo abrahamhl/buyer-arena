@@ -9,7 +9,11 @@ const TIME_TEXT: Record<Persona['time_pressure'], string> = {
 };
 
 const LITERACY_TEXT = (x: number) =>
-  x >= 0.75 ? 'is comfortable with software' : x >= 0.45 ? 'gets by with most websites' : 'finds most software confusing';
+  x >= 0.75
+    ? 'is comfortable with software'
+    : x >= 0.45
+      ? 'gets by with most websites'
+      : 'finds most software confusing';
 
 /** Deterministically turn a persona into a scenario (structured + narrative). */
 export function buildStory(persona: Persona, templateId: string): Story {
@@ -30,10 +34,12 @@ export function buildStory(persona: Persona, templateId: string): Story {
   const narrative = [
     `${first} ${situation}.`,
     `Right now ${first} ${pain}.`,
-    persona.prior_experience.length ? `In the past, ${first} ${persona.prior_experience.join(' and ')}.` : '',
+    persona.prior_experience.length ? `Background: ${first} ${persona.prior_experience.join('; and ')}.` : '',
     `${cap(first)} can spend up to ${persona.budget} ${persona.currency} a month and ${LITERACY_TEXT(persona.technical_literacy)}.`,
     `${cap(first)} finds this ${template.product_noun} because ${trigger}, and ${TIME_TEXT[persona.time_pressure]}.`,
-    persona.objections.length ? `${cap(first)} ${persona.objections.map((o) => OBJECTION_TEXT[o] ?? o).join(', and ')}.` : '',
+    persona.objections.length
+      ? `${cap(first)} ${persona.objections.map((o) => OBJECTION_TEXT[o] ?? o).join(', and ')}.`
+      : '',
   ]
     .filter(Boolean)
     .join(' ');

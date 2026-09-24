@@ -28,9 +28,15 @@ export function createProvider(spec: string, pricing?: ModelPricing): ChatProvid
       });
     case 'openai':
       if (!env.OPENAI_API_KEY) throw new ProviderError('OPENAI_API_KEY is not set', false);
-      return new OpenAICompatibleProvider('openai', model || 'gpt-4o-mini', 'https://api.openai.com/v1', env.OPENAI_API_KEY, {
-        pricing,
-      });
+      return new OpenAICompatibleProvider(
+        'openai',
+        model || 'gpt-4o-mini',
+        'https://api.openai.com/v1',
+        env.OPENAI_API_KEY,
+        {
+          pricing,
+        },
+      );
     case 'openai-compatible': {
       const base = env.OPENAI_BASE_URL;
       if (!base) throw new ProviderError('OPENAI_BASE_URL is not set', false);
@@ -40,17 +46,32 @@ export function createProvider(spec: string, pricing?: ModelPricing): ChatProvid
       });
     }
     case 'lmstudio':
-      return new OpenAICompatibleProvider('lmstudio', need(model), env.LMSTUDIO_BASE_URL ?? 'http://localhost:1234/v1', undefined, {
-        local: true,
-        pricing,
-      });
+      return new OpenAICompatibleProvider(
+        'lmstudio',
+        need(model),
+        env.LMSTUDIO_BASE_URL ?? 'http://localhost:1234/v1',
+        undefined,
+        {
+          local: true,
+          pricing,
+        },
+      );
     case 'ollama':
-      return new OpenAICompatibleProvider('ollama', need(model), env.OLLAMA_BASE_URL ?? 'http://localhost:11434/v1', undefined, {
-        local: true,
-        pricing,
-      });
+      return new OpenAICompatibleProvider(
+        'ollama',
+        need(model),
+        env.OLLAMA_BASE_URL ?? 'http://localhost:11434/v1',
+        undefined,
+        {
+          local: true,
+          pricing,
+        },
+      );
     default:
-      throw new ProviderError(`unknown provider "${kind}". Known: anthropic, openai, openai-compatible, lmstudio, ollama`, false);
+      throw new ProviderError(
+        `unknown provider "${kind}". Known: anthropic, openai, openai-compatible, lmstudio, ollama`,
+        false,
+      );
   }
 }
 
@@ -62,7 +83,15 @@ export function detectProviders(): { id: string; configured: boolean; note: stri
     { id: 'anthropic', configured: Boolean(env.ANTHROPIC_API_KEY), note: 'needs ANTHROPIC_API_KEY' },
     { id: 'openai', configured: Boolean(env.OPENAI_API_KEY), note: 'needs OPENAI_API_KEY' },
     { id: 'openai-compatible', configured: Boolean(env.OPENAI_BASE_URL), note: 'needs OPENAI_BASE_URL' },
-    { id: 'lmstudio', configured: true, note: `local ${env.LMSTUDIO_BASE_URL ?? 'http://localhost:1234/v1'} (not probed)` },
-    { id: 'ollama', configured: true, note: `local ${env.OLLAMA_BASE_URL ?? 'http://localhost:11434/v1'} (not probed)` },
+    {
+      id: 'lmstudio',
+      configured: true,
+      note: `local ${env.LMSTUDIO_BASE_URL ?? 'http://localhost:1234/v1'} (not probed)`,
+    },
+    {
+      id: 'ollama',
+      configured: true,
+      note: `local ${env.OLLAMA_BASE_URL ?? 'http://localhost:11434/v1'} (not probed)`,
+    },
   ];
 }

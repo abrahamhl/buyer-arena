@@ -34,6 +34,8 @@ export interface ConsensusItem {
   confidence: Confidence;
   evidence_ids: string[];
   affected_runs: string[];
+  /** Affected runs that did not complete the goal (co-occurrence, not proof of causation). */
+  blocking_runs: number | null;
   affected_segments: string[];
   proposed_experiments: string[];
 }
@@ -46,18 +48,26 @@ export interface ConsensusResult {
 
 const SEV: Severity[] = ['low', 'medium', 'high', 'critical'];
 const CONF: Confidence[] = ['low', 'medium', 'high'];
-const maxOf = <T>(order: T[], xs: T[]): T => xs.reduce((a, b) => (order.indexOf(b) > order.indexOf(a) ? b : a), xs[0] as T);
+const maxOf = <T>(order: T[], xs: T[]): T =>
+  xs.reduce((a, b) => (order.indexOf(b) > order.indexOf(a) ? b : a), xs[0] as T);
 const down = <T>(order: T[], x: T): T => order[Math.max(0, order.indexOf(x) - 1)] as T;
 const runOf = (evidenceId: string) => evidenceId.slice(0, evidenceId.lastIndexOf(':'));
 
 /** Drop evidence ids that do not exist; reject findings left with no evidence. A score without evidence is invalid. */
-export function validateFindings(findings: AttributedFinding[], index: Map<string, JourneyEvent>): { valid: AttributedFinding[]; rejected: RejectedFinding[] } {
+export function validateFindings(
+  findings: AttributedFinding[],
+  index: Map<string, JourneyEvent>,
+): { valid: AttributedFinding[]; rejected: RejectedFinding[] } {
   const valid: AttributedFinding[] = [];
   const rejected: RejectedFinding[] = [];
   for (const f of findings) {
     const ok = f.evidence_ids.filter((id) => index.has(id));
     if (ok.length === 0) {
-      rejected.push({ auditor: f.auditor, finding: f.finding, reason: `no valid evidence (cited: ${f.evidence_ids.slice(0, 3).join(', ') || 'none'})` });
+      rejected.push({
+        auditor: f.auditor,
+        finding: f.finding,
+        reason: `no valid evidence (cited: ${f.evidence_ids.slice(0, 3).join(', ') || 'none'})`,
+      });
       continue;
     }
     valid.push({ ...f, evidence_ids: ok });
@@ -79,7 +89,8 @@ export function buildConsensus(
 ): ConsensusResult {
   const { valid, rejected } = validateFindings(findings, index);
   const topics = new Map<string, AttributedFinding[]>();
-  for (const f of valid) topics.set(`${f.variant}\u0000${f.topic}`, [...(topics.get(`${f.variant}\u0000${f.topic}`) ?? []), f]);
+  for (const f of valid)
+    topics.set(`${f.variant}\u0000${f.topic}`, [...(topics.get(`${f.variant}\u0000${f.topic}`) ?? []), f]);
 
   const items: Omit<ConsensusItem, 'id'>[] = [];
   for (const [key, fs] of topics) {
@@ -93,8 +104,14 @@ export function buildConsensus(
     const supporters = [...new Set(support.map((f) => f.auditor))];
     const challenged = challenges.length > 0;
     const claim: ConsensusItem['claim'] = supporters.length >= 2 && !challenged ? 'inference' : 'hypothesis';
-    let severity = maxOf(SEV, support.map((f) => f.severity));
-    let confidence = maxOf(CONF, support.map((f) => f.confidence));
+    let severity = maxOf(
+      SEV,
+      support.map((f) => f.severity),
+    );
+    let confidence = maxOf(
+      CONF,
+      support.map((f) => f.confidence),
+    );
     if (challenged) {
       confidence = down(CONF, confidence);
       if (challenges.some((c) => /too few|only \d+ journey/i.test(c.finding))) severity = down(SEV, severity);
@@ -103,7 +120,9 @@ export function buildConsensus(
     const observed_fact = cluster
       ? `${cluster.affected}/${cluster.population} synthetic buyers on "${variant}" showed this signal; ${cluster.blocking_runs} of them did not complete the goal. Evidence spans ${runs.length} journey(s).`
       : `${support[0]?.finding ?? ''}`.replace(/\s+/g, ' ');
-    const interpretation = cluster ? `Likely cause (${claim}): ${playFor(topic).likely_cause}.` : support.map((f) => f.finding).find((x) => x !== observed_fact) ?? 'See linked journeys.';
+    const interpretation = cluster
+      ? `Likely cause (${claim}): ${playFor(topic).likely_cause}.`
+      : (support.map((f) => f.finding).find((x) => x !== observed_fact) ?? 'See linked journeys.');
     items.push({
       topic,
       title: cluster?.title ?? titleFor(topic, support[0]?.finding),
@@ -118,12 +137,18 @@ export function buildConsensus(
       confidence,
       evidence_ids: evidence,
       affected_runs: cluster?.affected_runs ?? runs,
+      blocking_runs: cluster?.blocking_runs ?? null,
       affected_segments: [...new Set(support.flatMap((f) => f.affected_segments))],
       proposed_experiments: [...new Set(support.map((f) => f.proposed_experiment))],
     });
   }
   const sevRank = (s: Severity) => SEV.indexOf(s);
-  items.sort((a, b) => sevRank(b.severity) - sevRank(a.severity) || b.affected_runs.length - a.affected_runs.length || a.topic.localeCompare(b.topic));
+  items.sort(
+    (a, b) =>
+      sevRank(b.severity) - sevRank(a.severity) ||
+      b.affected_runs.length - a.affected_runs.length ||
+      a.topic.localeCompare(b.topic),
+  );
   return {
     items: items.map((it, i) => ({ id: `${idPrefix}-${String(i + 1).padStart(3, '0')}`, ...it })),
     rejected,

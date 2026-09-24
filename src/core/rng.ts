@@ -24,7 +24,8 @@ export class Rng {
   sample<T>(items: readonly T[], n: number): T[] {
     const pool = [...items];
     const out: T[] = [];
-    while (out.length < n && pool.length > 0) out.push(pool.splice(Math.floor(this.next() * pool.length), 1)[0] as T);
+    while (out.length < n && pool.length > 0)
+      out.push(pool.splice(Math.floor(this.next() * pool.length), 1)[0] as T);
     return out;
   }
 }

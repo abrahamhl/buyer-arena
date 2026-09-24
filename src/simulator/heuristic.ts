@@ -56,10 +56,13 @@ export function stepBudget(brief: BuyerBrief): number {
 type Subgoal = 'price' | 'trust' | 'commit';
 
 const isCardField = (e: ElementInfo) => /card|cc-number|credit/i.test(`${e.name ?? ''} ${e.label ?? ''}`);
-const isPhoneField = (e: ElementInfo) => e.inputType === 'tel' || /phone|mobile number/i.test(`${e.name ?? ''} ${e.label ?? ''}`);
-const isEmailField = (e: ElementInfo) => e.inputType === 'email' || /e-?mail/i.test(`${e.name ?? ''} ${e.label ?? ''}`);
+const isPhoneField = (e: ElementInfo) =>
+  e.inputType === 'tel' || /phone|mobile number/i.test(`${e.name ?? ''} ${e.label ?? ''}`);
+const isEmailField = (e: ElementInfo) =>
+  e.inputType === 'email' || /e-?mail/i.test(`${e.name ?? ''} ${e.label ?? ''}`);
 const isPasswordField = (e: ElementInfo) => e.inputType === 'password';
-const fillable = (e: ElementInfo) => e.kind === 'input' || e.kind === 'textarea' || e.kind === 'select' || e.kind === 'checkbox';
+const fillable = (e: ElementInfo) =>
+  e.kind === 'input' || e.kind === 'textarea' || e.kind === 'select' || e.kind === 'checkbox';
 
 /**
  * Deterministic, attribute-driven buyer. It reads the page like a person with the given
@@ -79,22 +82,39 @@ export class HeuristicBuyer implements BuyerPolicy {
 
     // 1. Interruptions first: a modal must be dealt with before anything else.
     if (obs.modalOpen) {
-      if (memory.modalsDismissed >= 2) return abandon('A pop-up keeps covering the page and I cannot close it. Leaving.', 'intrusive-popup');
-      const onScreen = obs.elements.filter((e) => e.y - obs.scrollY < obs.viewport.height && e.y - obs.scrollY >= 0);
-      const close = onScreen.find((e) => e.region === 'dialog' && (e.kind === 'button' || e.kind === 'link') && KW.close.test(e.text));
+      if (memory.modalsDismissed >= 2)
+        return abandon('A pop-up keeps covering the page and I cannot close it. Leaving.', 'intrusive-popup');
+      const onScreen = obs.elements.filter(
+        (e) => e.y - obs.scrollY < obs.viewport.height && e.y - obs.scrollY >= 0,
+      );
+      const close = onScreen.find(
+        (e) => e.region === 'dialog' && (e.kind === 'button' || e.kind === 'link') && KW.close.test(e.text),
+      );
       return {
-        action: { kind: 'dismiss', idx: close?.idx, reason: close ? `A pop-up covers the page; clicking "${close.text}".` : 'A pop-up covers the page and I cannot see a close button; pressing Escape.' },
+        action: {
+          kind: 'dismiss',
+          idx: close?.idx,
+          reason: close
+            ? `A pop-up covers the page; clicking "${close.text}".`
+            : 'A pop-up covers the page and I cannot see a close button; pressing Escape.',
+        },
       };
     }
 
     // 2. Hard objections that end the journey.
     if (memory.distrustSeen.length && t.needsTrust) {
-      return abandon(`Read "${memory.distrustSeen[0]}" — not comfortable paying without a refund option.`, 'needs-refund-guarantee');
+      return abandon(
+        `Read "${memory.distrustSeen[0]}" — not comfortable paying without a refund option.`,
+        'needs-refund-guarantee',
+      );
     }
     if (t.needsPrice && memory.pricesSeen.length) {
       const cheapest = Math.min(...memory.pricesSeen);
       if (cheapest > brief.persona.budget) {
-        return abandon(`Cheapest plan is ${cheapest} ${brief.persona.currency}/month; my limit is ${brief.persona.budget}.`, 'price-too-high');
+        return abandon(
+          `Cheapest plan is ${cheapest} ${brief.persona.currency}/month; my limit is ${brief.persona.budget}.`,
+          'price-too-high',
+        );
       }
     }
 
@@ -114,24 +134,46 @@ export class HeuristicBuyer implements BuyerPolicy {
     const best = scored[0];
     if (best && best.s >= 2.5) {
       return {
-        action: { kind: 'click', idx: best.e.idx, reason: `Looking for ${SUBGOAL_TEXT[subgoal]}; "${best.e.text}" looks most promising.` },
-        meta: { subgoal, score: round(best.s), alternatives: scored.slice(1, 4).map((x) => ({ text: x.e.text, score: round(x.s) })) },
+        action: {
+          kind: 'click',
+          idx: best.e.idx,
+          reason: `Looking for ${SUBGOAL_TEXT[subgoal]}; "${best.e.text}" looks most promising.`,
+        },
+        meta: {
+          subgoal,
+          score: round(best.s),
+          alternatives: scored.slice(1, 4).map((x) => ({ text: x.e.text, score: round(x.s) })),
+        },
       };
     }
 
     // 5. Nothing promising in view: scroll, open the menu, go back, or give up.
     const scrolled = memory.scrolls[path] ?? 0;
-    const moreBelow = Math.max(obs.scrollY, memory.depth[path] ?? 0) + obs.viewport.height < obs.scrollHeight - 4;
+    const moreBelow =
+      Math.max(obs.scrollY, memory.depth[path] ?? 0) + obs.viewport.height < obs.scrollHeight - 4;
     if (moreBelow && scrolled < t.scrollBudget) {
-      return { action: { kind: 'scroll', reason: `Nothing about ${SUBGOAL_TEXT[subgoal]} here yet; scrolling down.` }, meta: { subgoal } };
+      return {
+        action: {
+          kind: 'scroll',
+          reason: `Nothing about ${SUBGOAL_TEXT[subgoal]} here yet; scrolling down.`,
+        },
+        meta: { subgoal },
+      };
     }
     const menu = visible.find((e) => e.kind === 'button' && KW.menu.test(e.text) && e.expanded === false);
     if (menu && !memory.menuOpened[path]) {
-      return { action: { kind: 'click', idx: menu.idx, reason: 'Opening the menu to look for more options.' }, meta: { subgoal, menu: true } };
+      return {
+        action: { kind: 'click', idx: menu.idx, reason: 'Opening the menu to look for more options.' },
+        meta: { subgoal, menu: true },
+      };
     }
     if (best && best.s >= 1) {
       return {
-        action: { kind: 'click', idx: best.e.idx, reason: `Not sure where ${SUBGOAL_TEXT[subgoal]} is; trying "${best.e.text}".` },
+        action: {
+          kind: 'click',
+          idx: best.e.idx,
+          reason: `Not sure where ${SUBGOAL_TEXT[subgoal]} is; trying "${best.e.text}".`,
+        },
         meta: { subgoal, score: round(best.s), guess: true },
       };
     }
@@ -143,7 +185,8 @@ export class HeuristicBuyer implements BuyerPolicy {
 
   private subgoal(t: Traits, m: BuyerMemory): Subgoal {
     if (t.needsPrice && m.pricesSeen.length === 0) return 'price';
-    if (t.needsTrust && m.trustSeen.length === 0 && m.actions.filter((a) => a.kind === 'click').length < 8) return 'trust';
+    if (t.needsTrust && m.trustSeen.length === 0 && m.actions.filter((a) => a.kind === 'click').length < 8)
+      return 'trust';
     return 'commit';
   }
 
@@ -165,7 +208,8 @@ export class HeuristicBuyer implements BuyerPolicy {
       try {
         const target = new URL(e.href);
         if (target.origin !== new URL(obs.url).origin) s -= 6;
-        if (m.visited.includes(target.pathname + target.search) || m.visited.includes(target.pathname)) s -= 4;
+        if (m.visited.includes(target.pathname + target.search) || m.visited.includes(target.pathname))
+          s -= 4;
         if (target.pathname + target.search === pathOf(obs.url)) s -= 6;
       } catch {
         s -= 1;
@@ -176,7 +220,8 @@ export class HeuristicBuyer implements BuyerPolicy {
 
   private goalForm(visible: ElementInfo[]): ElementInfo[] | null {
     const byForm = new Map<number, ElementInfo[]>();
-    for (const e of visible) if (e.formIdx !== undefined) byForm.set(e.formIdx, [...(byForm.get(e.formIdx) ?? []), e]);
+    for (const e of visible)
+      if (e.formIdx !== undefined) byForm.set(e.formIdx, [...(byForm.get(e.formIdx) ?? []), e]);
     for (const els of byForm.values()) {
       const goal = els.some(isPasswordField) && els.some(isEmailField);
       const pay = els.some(isCardField);
@@ -186,14 +231,22 @@ export class HeuristicBuyer implements BuyerPolicy {
     return null;
   }
 
-  private fillForm(els: ElementInfo[], ctx: DecideContext, t: Traits): { action: Action; meta?: Record<string, unknown> } | null {
+  private fillForm(
+    els: ElementInfo[],
+    ctx: DecideContext,
+    t: Traits,
+  ): { action: Action; meta?: Record<string, unknown> } | null {
     const { brief, memory, obs } = ctx;
     const p = brief.persona;
     if (memory.formErrors > t.formPatience) {
-      return abandon(`The form keeps rejecting my details (${obs.alerts[0] ?? 'unclear error'}). Giving up.`, 'complex-forms');
+      return abandon(
+        `The form keeps rejecting my details (${obs.alerts[0] ?? 'unclear error'}). Giving up.`,
+        'complex-forms',
+      );
     }
     const phone = els.find((e) => isPhoneField(e) && e.required);
-    if (phone && t.refusesPhone) return abandon('They require my phone number just to sign up. No.', 'no-phone-number');
+    if (phone && t.refusesPhone)
+      return abandon('They require my phone number just to sign up. No.', 'no-phone-number');
     const card = els.find(isCardField);
     if (card) {
       const pageText = obs.blocks.map((b) => b.text).join(' ');
@@ -201,15 +254,31 @@ export class HeuristicBuyer implements BuyerPolicy {
         return abandon('They want a credit card for a "free" trial. Not doing that.', 'no-card-for-trial');
       }
       const testCard = (card.hint ?? '').match(/(\d{4}[ -]?){3}\d{4}/)?.[0];
-      if (!testCard) return abandon('Asked for real payment details; a synthetic buyer never enters those.', 'payment-details');
+      if (!testCard)
+        return abandon(
+          'Asked for real payment details; a synthetic buyer never enters those.',
+          'payment-details',
+        );
     }
     if (t.needsTrust && memory.trustSeen.length === 0 && (card || els.some(isPasswordField))) {
       // Skeptics want reassurance before committing; look for it once before signing up.
-      const trustLinks = seenElements(obs, memory).filter((e) => e.kind === 'link' && KW.trust.test(e.text) && !memory.visited.includes(pathOf(e.href ?? '')));
+      const trustLinks = seenElements(obs, memory).filter(
+        (e) => e.kind === 'link' && KW.trust.test(e.text) && !memory.visited.includes(pathOf(e.href ?? '')),
+      );
       if (trustLinks[0]) {
-        return { action: { kind: 'click', idx: trustLinks[0].idx, reason: `Before signing up, checking "${trustLinks[0].text}" for refund terms.` }, meta: { subgoal: 'trust' } };
+        return {
+          action: {
+            kind: 'click',
+            idx: trustLinks[0].idx,
+            reason: `Before signing up, checking "${trustLinks[0].text}" for refund terms.`,
+          },
+          meta: { subgoal: 'trust' },
+        };
       }
-      return abandon('No refund policy or guarantee anywhere before asking me to commit.', 'needs-refund-guarantee');
+      return abandon(
+        'No refund policy or guarantee anywhere before asking me to commit.',
+        'needs-refund-guarantee',
+      );
     }
 
     const hintText = [...els.map((e) => e.hint ?? ''), ...obs.alerts].join(' ');
@@ -217,7 +286,8 @@ export class HeuristicBuyer implements BuyerPolicy {
     const fields: { idx: number; value: string }[] = [];
     for (const e of els) {
       if (!fillable(e)) continue;
-      if (!e.required && !t.fillsOptional && !isEmailField(e) && !isPasswordField(e) && e.kind !== 'select') continue;
+      if (!e.required && !t.fillsOptional && !isEmailField(e) && !isPasswordField(e) && e.kind !== 'select')
+        continue;
       if (e.kind === 'checkbox') {
         if (e.required) fields.push({ idx: e.idx, value: 'true' });
         continue;
@@ -232,16 +302,27 @@ export class HeuristicBuyer implements BuyerPolicy {
     const submit = els.find((e) => e.kind === 'submit');
     if (!submit) return null;
     return {
-      action: { kind: 'fill_form', fields, submitIdx: submit.idx, reason: card ? 'Entering the demo test card to start.' : 'Filling in the sign-up form.' },
+      action: {
+        kind: 'fill_form',
+        fields,
+        submitIdx: submit.idx,
+        reason: card ? 'Entering the demo test card to start.' : 'Filling in the sign-up form.',
+      },
       meta: { knowsPasswordRules: knowsRules, fields: fields.length },
     };
   }
 }
 
-function syntheticValue(e: ElementInfo, personaId: string, strongPassword: boolean, card?: ElementInfo): string {
+function syntheticValue(
+  e: ElementInfo,
+  personaId: string,
+  strongPassword: boolean,
+  card?: ElementInfo,
+): string {
   const key = `${e.name ?? ''} ${e.label ?? ''}`.toLowerCase();
   if (isEmailField(e)) return `${personaId}@buyers.example.test`;
-  if (isPasswordField(e)) return strongPassword ? `Tb!${personaId}-2026` : `sunshine${personaId.replace(/\D/g, '')}`;
+  if (isPasswordField(e))
+    return strongPassword ? `Tb!${personaId}-2026` : `sunshine${personaId.replace(/\D/g, '')}`;
   if (isPhoneField(e)) return '555-0100';
   if (card && e === card) return (card.hint ?? '').match(/(\d{4}[ -]?){3}\d{4}/)?.[0] ?? '';
   if (/exp/.test(key)) return '12/30';
@@ -252,7 +333,9 @@ function syntheticValue(e: ElementInfo, personaId: string, strongPassword: boole
 }
 
 function pickOption(options: string[], budget: number): string | undefined {
-  const priced = options.map((o) => ({ o, price: Number(o.match(/[€$£]\s?(\d+)/)?.[1] ?? NaN) })).filter((x) => !Number.isNaN(x.price));
+  const priced = options
+    .map((o) => ({ o, price: Number(o.match(/[€$£]\s?(\d+)/)?.[1] ?? NaN) }))
+    .filter((x) => !Number.isNaN(x.price));
   const affordable = priced.filter((x) => x.price <= budget).sort((a, b) => a.price - b.price);
   return affordable[0]?.o ?? priced.sort((a, b) => a.price - b.price)[0]?.o ?? options[0];
 }
@@ -268,5 +351,7 @@ const GIVE_UP: Record<Subgoal, string> = {
   commit: 'Could not figure out how to get started. Leaving.',
 };
 
-const abandon = (reason: string, objection?: string): { action: Action } => ({ action: { kind: 'abandon', reason, objection } });
+const abandon = (reason: string, objection?: string): { action: Action } => ({
+  action: { kind: 'abandon', reason, objection },
+});
 const round = (n: number) => Math.round(n * 100) / 100;

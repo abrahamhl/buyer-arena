@@ -51,13 +51,19 @@ function bump(s: Severity, blockingShare: number): Severity {
   return s;
 }
 
-const fromCluster = (c: FrictionCluster, finding: string, overrides: Partial<AuditorFinding> = {}): AuditorFinding => ({
+const fromCluster = (
+  c: FrictionCluster,
+  finding: string,
+  overrides: Partial<AuditorFinding> = {},
+): AuditorFinding => ({
   finding,
   topic: c.code,
   evidence_ids: spreadEvidence(c),
   affected_segments: segs(c),
   // Escalate only buyer-facing friction; an engineering error co-occurring with failure is not proof it caused it.
-  severity: c.lens.includes('engineering') ? c.severity : bump(c.severity, c.blocking_runs / Math.max(1, c.population)),
+  severity: c.lens.includes('engineering')
+    ? c.severity
+    : bump(c.severity, c.blocking_runs / Math.max(1, c.population)),
   confidence: confidenceFor(c),
   claim: 'inference',
   proposed_experiment: playFor(c.code).experiment,
@@ -100,7 +106,9 @@ export const BUSINESS_AUDITOR: Auditor = {
     }
     if (worst.drop > 0) {
       const fromIdx = FUNNEL.indexOf(worst.from as (typeof FUNNEL)[number]);
-      const leaked = p.run_index.filter((r) => r.milestones.includes(worst.from) && !r.milestones.includes(worst.to) && r.abandon_event);
+      const leaked = p.run_index.filter(
+        (r) => r.milestones.includes(worst.from) && !r.milestones.includes(worst.to) && r.abandon_event,
+      );
       const reachedLater = FUNNEL.slice(fromIdx + 1);
       const ev = leaked.map((r) => r.abandon_event as string);
       if (ev.length) {
@@ -120,7 +128,9 @@ export const BUSINESS_AUDITOR: Auditor = {
     const overall = p.summary.completion.rate;
     for (const s of p.summary.segments) {
       if (s.n >= 2 && s.completion.rate + 0.25 <= overall) {
-        const ev = p.run_index.filter((r) => r.segment === s.segment && !r.completed && r.abandon_event).map((r) => r.abandon_event as string);
+        const ev = p.run_index
+          .filter((r) => r.segment === s.segment && !r.completed && r.abandon_event)
+          .map((r) => r.abandon_event as string);
         if (ev.length) {
           out.push({
             finding: `Segment "${s.segment}" completes ${pct(s.completed, s.n)} vs ${Math.round(overall * 100)}% overall. Most common exit: ${s.top_abandon_reason ?? 'n/a'}`,
@@ -136,7 +146,12 @@ export const BUSINESS_AUDITOR: Auditor = {
       }
     }
     for (const c of p.clusters.filter((x) => x.lens.includes('business') && x.blocking_runs > 0)) {
-      out.push(fromCluster(c, `${c.title} blocks ${c.blocking_runs}/${c.population} buyers from converting (conversion proxy).`));
+      out.push(
+        fromCluster(
+          c,
+          `${c.title} blocks ${c.blocking_runs}/${c.population} buyers from converting (conversion proxy).`,
+        ),
+      );
     }
     if (p.comparison) {
       const h = p.comparison.headline;
@@ -150,7 +165,8 @@ export const BUSINESS_AUDITOR: Auditor = {
           severity: 'medium',
           confidence: p.comparison.n_pairs >= 30 ? 'medium' : 'low',
           claim: 'observed_fact',
-          proposed_experiment: 'Validate the synthetic delta with a real A/B test before rollout; treat it as a conversion proxy only.',
+          proposed_experiment:
+            'Validate the synthetic delta with a real A/B test before rollout; treat it as a conversion proxy only.',
         });
       }
     }
@@ -166,16 +182,26 @@ export const ENGINEERING_AUDITOR: Auditor = {
     return p.clusters
       .filter((c) => c.lens.includes('engineering'))
       .map((c) =>
-        fromCluster(c, `${c.title}: observed in ${share(c)} journeys. ${c.examples[0] ? `Example: ${c.examples[0].slice(0, 160)}` : ''}`.trim(), {
-          claim: 'observed_fact',
-          // An error that fires on every visit is certain even if few buyers reached the page.
-          confidence: c.affected >= 2 ? 'high' : 'medium',
-        }),
+        fromCluster(
+          c,
+          `${c.title}: observed in ${share(c)} journeys. ${c.examples[0] ? `Example: ${c.examples[0].slice(0, 160)}` : ''}`.trim(),
+          {
+            claim: 'observed_fact',
+            // An error that fires on every visit is certain even if few buyers reached the page.
+            confidence: c.affected >= 2 ? 'high' : 'medium',
+          },
+        ),
       );
   },
 };
 
-const OBJECTION_TOPICS = new Set(['trust_gap', 'required_phone', 'card_for_trial', 'price_above_budget', 'other_objection']);
+const OBJECTION_TOPICS = new Set([
+  'trust_gap',
+  'required_phone',
+  'card_for_trial',
+  'price_above_budget',
+  'other_objection',
+]);
 
 export const CUSTOMER_AUDITOR: Auditor = {
   id: 'customer',
@@ -229,7 +255,8 @@ export const REDTEAM_AUDITOR: Auditor = {
           severity: 'low',
           confidence: 'medium',
           claim: 'hypothesis',
-          proposed_experiment: 'Target the fix to that segment first, or confirm with real segment data (calibration).',
+          proposed_experiment:
+            'Target the fix to that segment first, or confirm with real segment data (calibration).',
         });
       }
       if (heuristic && OBJECTION_TOPICS.has(c.code)) {
@@ -241,12 +268,16 @@ export const REDTEAM_AUDITOR: Auditor = {
           severity: 'low',
           confidence: 'high',
           claim: 'hypothesis',
-          proposed_experiment: 'Calibrate objection prevalence from support tickets or lost-deal reasons before sizing this.',
+          proposed_experiment:
+            'Calibrate objection prevalence from support tickets or lost-deal reasons before sizing this.',
         });
       }
     }
     if (p.comparison && p.comparison.n_pairs < 30) {
-      const ids = p.run_index.filter((r) => r.abandon_event).map((r) => r.abandon_event as string).slice(0, 4);
+      const ids = p.run_index
+        .filter((r) => r.abandon_event)
+        .map((r) => r.abandon_event as string)
+        .slice(0, 4);
       if (ids.length) {
         out.push({
           finding: `The variant comparison rests on ${p.comparison.n_pairs} paired synthetic buyers. Treat the delta as an exploratory signal, not proven impact.`,
@@ -264,4 +295,10 @@ export const REDTEAM_AUDITOR: Auditor = {
   },
 };
 
-export const DEFAULT_AUDITORS: Auditor[] = [UX_AUDITOR, BUSINESS_AUDITOR, ENGINEERING_AUDITOR, CUSTOMER_AUDITOR, REDTEAM_AUDITOR];
+export const DEFAULT_AUDITORS: Auditor[] = [
+  UX_AUDITOR,
+  BUSINESS_AUDITOR,
+  ENGINEERING_AUDITOR,
+  CUSTOMER_AUDITOR,
+  REDTEAM_AUDITOR,
+];

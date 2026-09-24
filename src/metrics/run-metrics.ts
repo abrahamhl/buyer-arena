@@ -41,7 +41,8 @@ export function computeRunMetrics(run: RunRecord): RunMetrics {
   // A loop = returning to a page already visited earlier in the journey (A → B → A), counted once per revisit.
   const paths = run.url_history.map(pathOf);
   let loops = 0;
-  for (let i = 2; i < paths.length; i++) if (paths.slice(0, i - 1).includes(paths[i] as string) && paths[i] !== paths[i - 1]) loops++;
+  for (let i = 2; i < paths.length; i++)
+    if (paths.slice(0, i - 1).includes(paths[i] as string) && paths[i] !== paths[i - 1]) loops++;
 
   // Same decision on the same target twice in a row.
   const decisions = ev.filter((e) => e.type === 'decision');
@@ -53,7 +54,10 @@ export function computeRunMetrics(run: RunRecord): RunMetrics {
   }
 
   const goalEvent = ev.find((e) => e.type === 'goal_complete');
-  const milestones = Object.fromEntries(FUNNEL.map((m) => [m, run.milestones[m] !== undefined])) as Record<Milestone, boolean>;
+  const milestones = Object.fromEntries(FUNNEL.map((m) => [m, run.milestones[m] !== undefined])) as Record<
+    Milestone,
+    boolean
+  >;
   return {
     run_id: run.run_id,
     variant: run.variant,
@@ -70,8 +74,13 @@ export function computeRunMetrics(run: RunRecord): RunMetrics {
     milestones,
     navigation_loops: loops,
     repeated_actions: repeated,
-    dead_ends: ev.filter((e) => e.type === 'http_error' && (e.data?.status === 404 || e.data?.status === 410)).length,
-    browser_errors: count('console_error') + count('page_error') + count('request_failed') + ev.filter((e) => e.type === 'http_error' && Number(e.data?.status) >= 500).length,
+    dead_ends: ev.filter((e) => e.type === 'http_error' && (e.data?.status === 404 || e.data?.status === 410))
+      .length,
+    browser_errors:
+      count('console_error') +
+      count('page_error') +
+      count('request_failed') +
+      ev.filter((e) => e.type === 'http_error' && Number(e.data?.status) >= 500).length,
     failed_forms: count('form_error'),
     modal_interruptions: count('dismiss_modal'),
     backtracks: count('back'),
@@ -108,12 +117,25 @@ export interface VariantSummary {
   friction_events_per_buyer: number;
   funnel: FunnelStage[];
   segments: SegmentSummary[];
-  totals: { browser_errors: number; failed_forms: number; navigation_loops: number; dead_ends: number; modal_interruptions: number; repeated_actions: number };
+  totals: {
+    browser_errors: number;
+    failed_forms: number;
+    navigation_loops: number;
+    dead_ends: number;
+    modal_interruptions: number;
+    repeated_actions: number;
+  };
 }
 
 /** Friction events: every observable signal that a buyer struggled. */
 export const frictionCount = (m: RunMetrics) =>
-  m.navigation_loops + m.repeated_actions + m.dead_ends + m.failed_forms + m.modal_interruptions + m.backtracks + (m.abandoned ? 1 : 0);
+  m.navigation_loops +
+  m.repeated_actions +
+  m.dead_ends +
+  m.failed_forms +
+  m.modal_interruptions +
+  m.backtracks +
+  (m.abandoned ? 1 : 0);
 
 export function summarizeVariant(variant: string, metrics: RunMetrics[], runs: RunRecord[]): VariantSummary {
   const ms = metrics.filter((m) => m.variant === variant);
@@ -125,13 +147,27 @@ export function summarizeVariant(variant: string, metrics: RunMetrics[], runs: R
   return {
     variant,
     n,
-    completion: wilson(k((m) => m.goal_completed), n),
-    abandonment: wilson(k((m) => m.abandoned), n),
-    pricing_found: wilson(k((m) => m.milestones.pricing_found), n),
-    error_rate: wilson(k((m) => m.browser_errors > 0), n),
+    completion: wilson(
+      k((m) => m.goal_completed),
+      n,
+    ),
+    abandonment: wilson(
+      k((m) => m.abandoned),
+      n,
+    ),
+    pricing_found: wilson(
+      k((m) => m.milestones.pricing_found),
+      n,
+    ),
+    error_rate: wilson(
+      k((m) => m.browser_errors > 0),
+      n,
+    ),
     median_steps: median(ms.map((m) => m.steps)),
     median_steps_to_goal: median(ms.flatMap((m) => (m.steps_to_goal === null ? [] : [m.steps_to_goal]))),
-    median_time_to_goal_ms: median(ms.flatMap((m) => (m.time_to_goal_ms === null ? [] : [m.time_to_goal_ms]))),
+    median_time_to_goal_ms: median(
+      ms.flatMap((m) => (m.time_to_goal_ms === null ? [] : [m.time_to_goal_ms])),
+    ),
     friction_events_per_buyer: n ? sum(frictionCount) / n : 0,
     // Funnel reach is monotone: a buyer who reached a later stage counts as having passed earlier ones
     // (e.g. a site without a checkout step). Raw milestone rates stay available via `pricing_found` etc.
@@ -142,7 +178,8 @@ export function summarizeVariant(variant: string, metrics: RunMetrics[], runs: R
     segments: segKeys.map((key) => {
       const [archetype, segment] = key.split('\u0000') as [string, string];
       const g = ms.filter((m) => m.archetype === archetype);
-      const reasons = g.filter((m) => !m.goal_completed).map((m) => normalizeReason(reasonOf(m.run_id)));
+      const raw = g.filter((m) => !m.goal_completed).map((m) => reasonOf(m.run_id) ?? 'unknown');
+      const top = mode(raw.map(normalizeReason));
       return {
         segment,
         archetype,
@@ -150,7 +187,8 @@ export function summarizeVariant(variant: string, metrics: RunMetrics[], runs: R
         completed: g.filter((m) => m.goal_completed).length,
         completion: wilson(g.filter((m) => m.goal_completed).length, g.length),
         median_steps: median(g.map((m) => m.steps)),
-        top_abandon_reason: mode(reasons),
+        // Group by normalised reason, but show a real example so the text stays readable.
+        top_abandon_reason: top === undefined ? undefined : raw.find((r) => normalizeReason(r) === top),
       };
     }),
     totals: {

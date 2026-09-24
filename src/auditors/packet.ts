@@ -21,15 +21,37 @@ export interface AuditPacket {
   subject_variant: string;
   population: number;
   summary: VariantSummary;
-  comparison?: Pick<Comparison, 'baseline' | 'candidate' | 'n_pairs' | 'label' | 'headline' | 'rows' | 'segments' | 'friction'>;
+  comparison?: Pick<
+    Comparison,
+    'baseline' | 'candidate' | 'n_pairs' | 'label' | 'headline' | 'rows' | 'segments' | 'friction'
+  >;
   clusters: FrictionCluster[];
-  run_index: { run_id: string; segment: string; completed: boolean; milestones: string[]; abandon_event?: string; objection?: string }[];
+  run_index: {
+    run_id: string;
+    segment: string;
+    completed: boolean;
+    milestones: string[];
+    abandon_event?: string;
+    objection?: string;
+  }[];
   failed_journeys: JourneyDigest[];
   successful_journeys: JourneyDigest[];
   policy: string[];
 }
 
-const KEEP = new Set(['decision', 'abandon', 'objection', 'form_error', 'page_error', 'console_error', 'http_error', 'dismiss_modal', 'goal_complete', 'milestone', 'request_failed']);
+const KEEP = new Set([
+  'decision',
+  'abandon',
+  'objection',
+  'form_error',
+  'page_error',
+  'console_error',
+  'http_error',
+  'dismiss_modal',
+  'goal_complete',
+  'milestone',
+  'request_failed',
+]);
 
 export function digest(run: RunRecord): JourneyDigest {
   return {
@@ -104,8 +126,14 @@ export function buildPacket(
       abandon_event: r.events.find((e) => e.type === 'abandon')?.id,
       objection: r.objection,
     })),
-    failed_journeys: representative(mine.filter((r) => !r.goal_completed), 6).map(digest),
-    successful_journeys: representative(mine.filter((r) => r.goal_completed), 3).map(digest),
+    failed_journeys: representative(
+      mine.filter((r) => !r.goal_completed),
+      6,
+    ).map(digest),
+    successful_journeys: representative(
+      mine.filter((r) => r.goal_completed),
+      3,
+    ).map(digest),
     policy: [...new Set(mine.map((r) => r.policy))],
   };
 }
