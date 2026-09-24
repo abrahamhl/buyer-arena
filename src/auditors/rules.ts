@@ -1,4 +1,4 @@
-import type { AuditorFinding, Confidence, Severity } from '../core/types.js';
+import type { AuditorFinding, Confidence } from '../core/types.js';
 import { FUNNEL } from '../core/types.js';
 import type { FrictionCluster } from '../metrics/friction.js';
 import type { AuditPacket } from './packet.js';
