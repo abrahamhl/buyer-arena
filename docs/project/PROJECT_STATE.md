@@ -7,7 +7,7 @@ variants) in 15–30 s and writes the report and the ROI backlog. No paid API is
 | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | Personas, stories, brief leak guard                     | Done, tested                                                                                                                                  |
 | Playwright engine, evidence and traces                  | Done, tested. The same-origin guard covers redirects and pop-ups. Every step has a hard deadline                                              |
-| Heuristic buyer (deterministic)                         | Done. Demo: baseline 40% → candidate 75% (7 buyers flipped fail→complete, 0 the other way)                                                                            |
+| Heuristic buyer (deterministic)                         | Done. Demo: baseline 40% → candidate 75% (7 buyers flipped fail→complete, 0 the other way)                                                    |
 | LLM buyer and providers                                 | Done. HTTP adapters verified against local fake endpoints. **No live model call has succeeded** (see OPEN_LOOPS)                              |
 | External engine adapter (Browser Use / Browser Harness) | Contract implemented and tested with a Node stand-in                                                                                          |
 | Metrics, friction, comparison, statistics               | Done. Friction is linked to the journey's exit; discordant pairs are reported; comparisons are free of survivorship bias                      |
