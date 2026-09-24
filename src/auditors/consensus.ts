@@ -1,0 +1,139 @@
+import type { AuditorFinding, Claim, Confidence, JourneyEvent, Severity } from '../core/types.js';
+import type { FrictionCluster } from '../metrics/friction.js';
+import { playFor } from './playbook.js';
+import type { AuditorId } from './rules.js';
+
+export interface AttributedFinding extends AuditorFinding {
+  auditor: AuditorId;
+  variant: string;
+  /** Set when an LLM auditor failed and the deterministic auditor was used instead. */
+  degraded?: boolean;
+}
+
+export interface RejectedFinding {
+  auditor: AuditorId;
+  finding: string;
+  reason: string;
+}
+
+export interface ConsensusItem {
+  id: string;
+  topic: string;
+  title: string;
+  variant: string;
+  /** Directly computed from recorded events. */
+  observed_fact: string;
+  /** Interpretation offered by the auditors. */
+  interpretation: string;
+  /** Label for the interpretation. The observed_fact is always an OBSERVED FACT. */
+  claim: Exclude<Claim, 'observed_fact'>;
+  supporters: AuditorId[];
+  challenges: { auditor: AuditorId; text: string }[];
+  disagreement: boolean;
+  severity: Severity;
+  confidence: Confidence;
+  evidence_ids: string[];
+  affected_runs: string[];
+  affected_segments: string[];
+  proposed_experiments: string[];
+}
+
+export interface ConsensusResult {
+  items: ConsensusItem[];
+  rejected: RejectedFinding[];
+  findings: AttributedFinding[];
+}
+
+const SEV: Severity[] = ['low', 'medium', 'high', 'critical'];
+const CONF: Confidence[] = ['low', 'medium', 'high'];
+const maxOf = <T>(order: T[], xs: T[]): T => xs.reduce((a, b) => (order.indexOf(b) > order.indexOf(a) ? b : a), xs[0] as T);
+const down = <T>(order: T[], x: T): T => order[Math.max(0, order.indexOf(x) - 1)] as T;
+const runOf = (evidenceId: string) => evidenceId.slice(0, evidenceId.lastIndexOf(':'));
+
+/** Drop evidence ids that do not exist; reject findings left with no evidence. A score without evidence is invalid. */
+export function validateFindings(findings: AttributedFinding[], index: Map<string, JourneyEvent>): { valid: AttributedFinding[]; rejected: RejectedFinding[] } {
+  const valid: AttributedFinding[] = [];
+  const rejected: RejectedFinding[] = [];
+  for (const f of findings) {
+    const ok = f.evidence_ids.filter((id) => index.has(id));
+    if (ok.length === 0) {
+      rejected.push({ auditor: f.auditor, finding: f.finding, reason: `no valid evidence (cited: ${f.evidence_ids.slice(0, 3).join(', ') || 'none'})` });
+      continue;
+    }
+    valid.push({ ...f, evidence_ids: ok });
+  }
+  return { valid, rejected };
+}
+
+/**
+ * Merge independent auditor findings per topic.
+ *   - The observed fact is generated from data, never from auditor prose.
+ *   - An interpretation is an INFERENCE only if ≥2 non-red-team auditors support it and
+ *     the red team raised no challenge; otherwise it stays a HYPOTHESIS.
+ */
+export function buildConsensus(
+  findings: AttributedFinding[],
+  index: Map<string, JourneyEvent>,
+  clusters: FrictionCluster[],
+  idPrefix = 'F',
+): ConsensusResult {
+  const { valid, rejected } = validateFindings(findings, index);
+  const topics = new Map<string, AttributedFinding[]>();
+  for (const f of valid) topics.set(`${f.variant}\u0000${f.topic}`, [...(topics.get(`${f.variant}\u0000${f.topic}`) ?? []), f]);
+
+  const items: Omit<ConsensusItem, 'id'>[] = [];
+  for (const [key, fs] of topics) {
+    const [variant, topic] = key.split('\u0000') as [string, string];
+    const support = fs.filter((f) => f.auditor !== 'redteam');
+    const challenges = fs.filter((f) => f.auditor === 'redteam');
+    if (support.length === 0) continue; // A challenge with nothing to challenge is not a finding.
+    const cluster = clusters.find((c) => c.variant === variant && c.code === topic);
+    const evidence = [...new Set(support.flatMap((f) => f.evidence_ids))];
+    const runs = [...new Set(evidence.map(runOf))];
+    const supporters = [...new Set(support.map((f) => f.auditor))];
+    const challenged = challenges.length > 0;
+    const claim: ConsensusItem['claim'] = supporters.length >= 2 && !challenged ? 'inference' : 'hypothesis';
+    let severity = maxOf(SEV, support.map((f) => f.severity));
+    let confidence = maxOf(CONF, support.map((f) => f.confidence));
+    if (challenged) {
+      confidence = down(CONF, confidence);
+      if (challenges.some((c) => /too few|only \d+ journey/i.test(c.finding))) severity = down(SEV, severity);
+    }
+    if (supporters.length === 1 && confidence === 'high') confidence = 'medium';
+    const observed_fact = cluster
+      ? `${cluster.affected}/${cluster.population} synthetic buyers on "${variant}" showed this signal; ${cluster.blocking_runs} of them did not complete the goal. Evidence spans ${runs.length} journey(s).`
+      : `${support[0]?.finding ?? ''}`.replace(/\s+/g, ' ');
+    const interpretation = cluster ? `Likely cause (${claim}): ${playFor(topic).likely_cause}.` : support.map((f) => f.finding).find((x) => x !== observed_fact) ?? 'See linked journeys.';
+    items.push({
+      topic,
+      title: cluster?.title ?? titleFor(topic, support[0]?.finding),
+      variant,
+      observed_fact,
+      interpretation,
+      claim,
+      supporters,
+      challenges: challenges.map((c) => ({ auditor: c.auditor, text: c.finding })),
+      disagreement: challenged,
+      severity,
+      confidence,
+      evidence_ids: evidence,
+      affected_runs: cluster?.affected_runs ?? runs,
+      affected_segments: [...new Set(support.flatMap((f) => f.affected_segments))],
+      proposed_experiments: [...new Set(support.map((f) => f.proposed_experiment))],
+    });
+  }
+  const sevRank = (s: Severity) => SEV.indexOf(s);
+  items.sort((a, b) => sevRank(b.severity) - sevRank(a.severity) || b.affected_runs.length - a.affected_runs.length || a.topic.localeCompare(b.topic));
+  return {
+    items: items.map((it, i) => ({ id: `${idPrefix}-${String(i + 1).padStart(3, '0')}`, ...it })),
+    rejected,
+    findings: valid,
+  };
+}
+
+function titleFor(topic: string, finding?: string): string {
+  if (topic === 'funnel_leak') return 'Largest funnel leak';
+  if (topic === 'variant_delta') return 'Variant comparison';
+  if (topic.startsWith('segment_gap:')) return `Segment under-performs: ${topic.slice(12)}`;
+  return (finding ?? topic).slice(0, 80);
+}
