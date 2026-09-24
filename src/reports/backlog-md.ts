@@ -54,12 +54,17 @@ export function renderBacklog(a: Analysis): string {
       L.push(
         `- **${item.claim === 'inference' ? 'Inference' : 'Hypothesis'}:** ${item.interpretation.replace(/^Likely cause \([a-z]+\): /, '')}`,
       );
+      if (item.counterfactual) L.push(`- **Counterfactual:** ${item.counterfactual}`);
+      L.push(`- **Independent sources:** ${item.sources.join(', ')}`);
       L.push(
         `- **Auditors in support:** ${item.supporters.join(', ')}${item.challenges.length ? ` · **challenged by red team:** ${item.challenges.map((x) => x.text).join(' / ')}` : ''}`,
       );
     }
     L.push(
       `- **Confidence:** ${item?.confidence ?? '—'} · **Effort:** ${o.factors.effort} · **Reversibility:** ${o.factors.reversibility} · **Testability:** ${o.factors.testability}`,
+    );
+    L.push(
+      `- **If fixed:** up to +${Math.round(o.ceiling_pp * 100)}pp goal completion (journeys that ended at this friction)`,
     );
     L.push(`- **Suggested experiment:** ${o.experiment}`);
     L.push('');
@@ -81,13 +86,15 @@ export function renderBacklog(a: Analysis): string {
   L.push('```');
   L.push('');
   L.push(
-    '- `frequency` = affected buyers / population · `goal_impact` = affected buyers who did not complete / affected',
+    '- `frequency` = affected buyers / population · `goal_impact` = affected buyers whose journey ENDED at this friction / affected',
   );
   L.push(
-    '- `severity` low .25 · medium .5 · high .8 · critical 1 — `confidence` low .4 · medium .7 · high 1',
+    '- `frequency × goal_impact` is the "if fixed" ceiling; the score is that ceiling in pp, weighted by confidence and ease of testing, per unit of effort',
   );
-  L.push('- `effort_cost` low 1 · medium 2 · high 4 (defaults from the playbook; override per team)');
-  L.push('- Labels: ≥15 HIGH-LEVERAGE EXPERIMENT · ≥5 MEDIUM · otherwise LOW');
+  L.push(
+    '- `confidence` low .4 · medium .7 · high 1 (lowered by red-team challenges) · `effort_cost` low 1 · medium 2 · high 4 (playbook defaults; override per team)',
+  );
+  L.push('- Labels: ≥5 HIGH-LEVERAGE EXPERIMENT · ≥2 MEDIUM · otherwise LOW');
   L.push('');
   if (c) {
     L.push('## Caveats');

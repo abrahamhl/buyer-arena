@@ -8,6 +8,15 @@ export interface AttributedFinding extends AuditorFinding {
   variant: string;
   /** Set when an LLM auditor failed and the deterministic auditor was used instead. */
   degraded?: boolean;
+  /** 'rule' = deterministic auditor over detector output; 'llm' = model auditor. */
+  source?: 'rule' | 'llm';
+}
+
+/** Evidence from the OTHER variant for the same personas: did the outcome flip where the friction was absent/present? */
+export interface Counterfactual {
+  affected: number;
+  flipped: number;
+  text: string;
 }
 
 export interface RejectedFinding {
@@ -28,6 +37,9 @@ export interface ConsensusItem {
   /** Label for the interpretation. The observed_fact is always an OBSERVED FACT. */
   claim: Exclude<Claim, 'observed_fact'>;
   supporters: AuditorId[];
+  /** Independent evidence sources behind the interpretation (detector, llm, counterfactual). */
+  sources: string[];
+  counterfactual?: string;
   challenges: { auditor: AuditorId; text: string }[];
   disagreement: boolean;
   severity: Severity;
@@ -86,8 +98,14 @@ export function buildConsensus(
   index: Map<string, JourneyEvent>,
   clusters: FrictionCluster[],
   idPrefix = 'F',
+  counterfactuals: Map<string, Counterfactual> = new Map(),
 ): ConsensusResult {
-  const { valid, rejected } = validateFindings(findings, index);
+  // Evidence must belong to the finding's own variant.
+  const scoped = findings.map((f) => ({
+    ...f,
+    evidence_ids: f.evidence_ids.filter((id) => id.startsWith(`${f.variant}-`)),
+  }));
+  const { valid, rejected } = validateFindings(scoped, index);
   const topics = new Map<string, AttributedFinding[]>();
   for (const f of valid)
     topics.set(`${f.variant}\u0000${f.topic}`, [...(topics.get(`${f.variant}\u0000${f.topic}`) ?? []), f]);
@@ -103,7 +121,14 @@ export function buildConsensus(
     const runs = [...new Set(evidence.map(runOf))];
     const supporters = [...new Set(support.map((f) => f.auditor))];
     const challenged = challenges.length > 0;
-    const claim: ConsensusItem['claim'] = supporters.length >= 2 && !challenged ? 'inference' : 'hypothesis';
+    // Rule auditors all read the same detector output, so together they are ONE source.
+    const cf = counterfactuals.get(`${variant}\u0000${topic}`);
+    const sources = [
+      ...(support.some((f) => f.source !== 'llm') ? ['detector'] : []),
+      ...(support.some((f) => f.source === 'llm') ? ['llm'] : []),
+      ...(cf ? ['counterfactual'] : []),
+    ];
+    const claim: ConsensusItem['claim'] = sources.length >= 2 && !challenged ? 'inference' : 'hypothesis';
     let severity = maxOf(
       SEV,
       support.map((f) => f.severity),
@@ -117,9 +142,12 @@ export function buildConsensus(
       if (challenges.some((c) => /too few|only \d+ journey/i.test(c.finding))) severity = down(SEV, severity);
     }
     if (supporters.length === 1 && confidence === 'high') confidence = 'medium';
+    const computedFact = support.find((f) => f.computed && f.source !== 'llm');
     const observed_fact = cluster
-      ? `${cluster.affected}/${cluster.population} synthetic buyers on "${variant}" showed this signal; ${cluster.blocking_runs} of them did not complete the goal. Evidence cited from ${runs.length} journey(s).`
-      : `${support[0]?.finding ?? ''}`.replace(/\s+/g, ' ');
+      ? `${cluster.affected}/${cluster.population} synthetic buyers on "${variant}" showed this signal; ${cluster.blocking_runs} ended their journey at it. Showing evidence from ${runs.length} of ${cluster.affected} journey(s).`
+      : computedFact
+        ? computedFact.finding.replace(/\s+/g, ' ')
+        : `Unverified auditor statement: ${support[0]?.finding ?? ''}`.replace(/\s+/g, ' ');
     const interpretation = cluster
       ? `Likely cause (${claim}): ${playFor(topic).likely_cause}.`
       : (support.map((f) => f.finding).find((x) => x !== observed_fact) ?? interpretFor(topic));
@@ -131,6 +159,8 @@ export function buildConsensus(
       interpretation,
       claim,
       supporters,
+      sources,
+      counterfactual: cf?.text,
       challenges: challenges.map((c) => ({ auditor: c.auditor, text: c.finding })),
       disagreement: challenged,
       severity,

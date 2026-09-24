@@ -239,6 +239,8 @@ export const AuditorFindingSchema = z.object({
   confidence: Confidence,
   claim: Claim.default('inference'),
   proposed_experiment: z.string(),
+  /** Set by deterministic auditors when the finding text is computed from aggregates. Never trusted from LLM output. */
+  computed: z.boolean().optional(),
 });
 export type AuditorFinding = z.infer<typeof AuditorFindingSchema>;
 

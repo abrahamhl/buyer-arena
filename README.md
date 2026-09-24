@@ -16,10 +16,12 @@ you can compare two versions of your product with the same buyers.
 </div>
 
 ```bash
-git clone <this repo> buyer-arena && cd buyer-arena
-npm install
-npm run demo          # 20 buyers × 2 versions of a demo SaaS · about 15 s · no API keys
+git clone https://github.com/<org>/buyer-arena.git && cd buyer-arena
+npm install           # also builds the CLI
+npm run demo          # 20 buyers × 2 versions of a demo SaaS · 15–30 s · no API keys
 ```
+
+The first run downloads Playwright's Chromium once (about 150 MB). You need Node 22.12 or newer.
 
 ![Buyer Arena report: 20 buyers, 5 segments, baseline → candidate, +35pp goal completion](assets/demo/report-hero.png)
 
@@ -27,22 +29,31 @@ npm run demo          # 20 buyers × 2 versions of a demo SaaS · about 15 s · 
   BUYER ARENA  ·  20 BUYERS  ·  5 SEGMENTS  ·  2 VARIANTS
   BASELINE → CANDIDATE   EXPLORATORY SIGNAL   CONVERSION PROXY
 
-                                 BASELINE   CANDIDATE     DELTA   95% INTERVAL
-  Goal completion                     40%         75%     +35pp   +15pp … +55pp
-  Abandonment                         60%         25%     −35pp   −55pp … −15pp
-  Pricing found                       75%        100%     +25pp   +10pp … +45pp
-  Runs with browser errors            55%          0%     −55pp   −75pp … −35pp
-  Median steps (all journeys)           7           4        −3
+                                           BASELINE   CANDIDATE     DELTA   95% INTERVAL
+  Goal completion                               40%         75%     +35pp   +15pp … +55pp
+  Abandonment                                   60%         25%     −35pp   −55pp … −15pp
+  Pricing found                                 75%        100%     +25pp   +10pp … +45pp
+  Reached sign-up                               60%         75%     +15pp   −15pp … +45pp
+  Runs with browser errors                      55%          0%     −55pp   −75pp … −35pp
+  Friction events / buyer                      1.15        1.45     +0.30   −0.40 … +0.95
+  Steps to goal (n=8 completed on both)         8.1           4      −4.1   −4.8 … −3.5
+  Median steps (all journeys)                     7           4        −3
 
   TOP FRICTION (candidate)
-   20/20  Pop-up interrupts the journey  NEW
+    4/20  Pop-up interrupts the journey  NEW
+    1/20  Cheapest plan above buyer budget
+  RESOLVED vs baseline: JavaScript errors on the page · No refund / guarantee information before commitment · Buyers could not find pricing · Sign-up demands a phone number · Buyers loop back to pages already visited · Form rejected input (rules not shown up-front) · Buyers ran out of patience (step limit)
+
   NEXT EXPERIMENTS
-  #1 Pop-up interrupts the journey                  48.8  HIGH-LEVERAGE EXPERIMENT
+  #1 Pop-up interrupts the journey                   7.8  HIGH-LEVERAGE EXPERIMENT
+  #2 Cheapest plan above buyer budget                0.4  LOW
 ```
 
-In the demo, the candidate fixes six problems in the baseline. It also adds a newsletter pop-up
-whose close button falls off-screen on phones. Buyer Arena catches both. Every mobile buyer is
-still lost, now to the pop-up, and that becomes experiment #1.
+In the demo, the candidate fixes seven kinds of baseline friction. Among them are hidden pricing,
+a required phone field, and missing refund terms. It also introduces a regression: a newsletter
+pop-up whose close button falls off-screen on phones. The mobile segment still converts at 0%,
+but the cause has changed. On the baseline those buyers left at the phone field; on the candidate
+they leave at the pop-up. That becomes experiment #1, worth up to +20pp.
 
 ---
 
@@ -65,15 +76,16 @@ brief is built from an allow-list, and a leak check runs before every journey.
 ## Quickstart
 
 ```bash
-npm install && npm run demo                   # bundled demo, fully offline
-npm link                                      # optional: puts `buyer-arena` on your PATH
-buyer-arena demo --open                       # same demo, opens the report
-buyer-arena doctor                            # environment check (no network, no spend)
+npm install
+npm run ba -- doctor                          # environment check (no network, no spend)
+npm run demo                                  # bundled demo, fully offline
+npm run ba -- replay candidate-p-004          # replay one buyer: run ids are <variant>-<persona>
+npm run ba -- demo --open                     # rerun the demo and open the HTML report
 ```
 
-> Buyer Arena is not published to npm yet. Use `npm link`, or run `npm run ba -- <command>`
-> (for example `npm run ba -- status`). Do **not** run `npx buyer-arena` before the package is
-> published: npx would try to fetch an unrelated package from the registry.
+`npm run ba -- <command>` runs the local CLI. `npm link` puts a `buyer-arena` command on your
+PATH, which the examples below use. Do **not** run `npx buyer-arena` until the package is
+published to npm: npx would fetch an unrelated package from the registry.
 
 Against your own app (localhost or staging you own):
 
@@ -134,7 +146,11 @@ failed and successful journeys with event ids. None of them sees another auditor
 consensus stage then applies these rules:
 
 - **Observed fact:** computed from events, never written by an auditor.
-- **Inference:** backed by at least two auditors and not challenged by the red team.
+- **Inference:** backed by at least two _independent_ sources and not challenged by the red team.
+  - The rule-based auditors share one detector, so together they count as one source.
+  - The **counterfactual** is a second source: the same personas on the other version.
+  - LLM auditors are a third.
+  - With the deterministic buyer, the red team flags every finding that depends on the buyer's own parameters, so most interpretations stay **hypotheses** until an LLM buyer or real data backs them. This is deliberate.
 - **Hypothesis:** everything else, including anything the red team challenges (sample size, one segment only, effects built into the persona configuration).
 
 ![Five auditors → consensus with evidence links](assets/demo/report-auditors.png)
@@ -168,7 +184,10 @@ Details and assumptions: [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 | Any OpenAI-compatible            | `openai-compatible:<model>`           | `OPENAI_BASE_URL`   |
 | LM Studio / Ollama (local, free) | `lmstudio:<model>` · `ollama:<model>` | local server        |
 
-- `--budget` sets a hard USD cap, $1 by default whenever an LLM is involved. Before each call, the worst-case cost is checked against the cap, and the call is refused if it could exceed it, so a session cannot overspend.
+- `--budget` sets a hard USD cap, $1 by default whenever an LLM is involved.
+  - Each call's worst-case cost (2 characters per token plus the maximum output) is **reserved** before the call is sent.
+  - Parallel buyers therefore cannot race past the cap.
+  - Spend from earlier runs counts when a session is resumed.
 - `--max-buyers`, `--max-parallel` (default 4, or 2 for LLM buyers), `--max-steps` and `--timeout` add further limits.
 - Tokens (including cached), latency, number of calls and estimated cost are recorded per run and per session.
 - Keys are read from the environment only. They are never taken as flags, never logged, and redacted from errors. The test suite runs with `BUYER_ARENA_OFFLINE=1`, which refuses paid providers.
@@ -192,7 +211,8 @@ ids, never raw traces. Because the MCP client supplies the URLs, targets are lim
 ## Integrations
 
 Browser Use and Browser Harness connect through `--engine-cmd`, an external engine that
-exchanges JSON over stdin/stdout. Promptfoo and DeepEval work through the documented JSON
+exchanges JSON over stdin/stdout. [`examples/github-actions/pr-preview.yml`](examples/github-actions/pr-preview.yml)
+runs Buyer Arena on every pull-request preview and comments the comparison on the PR. Promptfoo and DeepEval work through the documented JSON
 outputs. None of these is required. See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) for what is
 implemented and what is planned.
 
@@ -200,7 +220,7 @@ implemented and what is planned.
 
 - Synthetic buyers only. Names are fictional first names with an initial, and there is no real customer data anywhere.
 - Calibration accepts **aggregates only**: shares and rates, with a minimum group size of 10 or more. The schema has no field that could hold a person-level record.
-- Journeys stay on the origin you supply. Off-site requests are blocked and recorded. There is no crawling or discovery.
+- Journeys stay on the origin you supply. Off-site requests, redirects and pop-up windows are blocked and recorded. There is no crawling or discovery.
 - Everything runs locally. The demo store binds to `127.0.0.1`.
 
 ## Architecture

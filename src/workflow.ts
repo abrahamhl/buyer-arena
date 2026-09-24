@@ -98,6 +98,8 @@ export async function runDemo(o: DemoOptions = {}): Promise<PipelineResult> {
         { name: 'candidate', url: candidate.url },
       ],
       maxParallel: o.maxParallel,
+      // Demo stores use fresh ephemeral ports each time; the product under test is the same.
+      allowTargetChange: true,
       trace: o.trace ?? 'failed',
       screenshots: o.screenshots ?? true,
       onRun: o.onRun,
@@ -159,6 +161,10 @@ export async function resumeSession(
     maxSteps: m.limits.maxSteps,
     timeoutMs: m.limits.timeoutMs,
     budgetUsd: m.limits.budgetUsd,
+    engineCommand: m.options?.engineCommand,
+    forbiddenTerms: m.options?.forbiddenTerms,
+    trace: m.options?.trace,
+    screenshots: m.options?.screenshots,
     ...extra,
   });
 }

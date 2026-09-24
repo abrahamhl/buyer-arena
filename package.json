@@ -11,13 +11,12 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "templates",
     "README.md",
     "LICENSE",
     "NOTICE"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -30,10 +29,11 @@
     "test:integration": "vitest run tests/integration",
     "setup:browser": "playwright install chromium",
     "demo": "npm run setup:browser --silent && npm run build --silent && node dist/cli/main.js demo",
-    "ba": "node dist/cli/main.js",
+    "ba": "npm run build --silent && node dist/cli/main.js",
     "mcp": "node dist/cli/main.js mcp",
     "secrets:scan": "node scripts/secret-scan.mjs",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run secrets:scan"
+    "check": "npm run typecheck && npm run lint && npm run test && npm run secrets:scan",
+    "prepare": "npm run build"
   },
   "keywords": [
     "synthetic-users",

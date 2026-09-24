@@ -61,7 +61,10 @@ export async function runExternalJourney(o: ExternalJourneyOptions): Promise<Run
     let out = '';
     let err = '';
     const timer = setTimeout(() => {
-      child.kill();
+      // With shell:true, kill() only stops the shell on Windows; kill the whole tree.
+      if (process.platform === 'win32' && child.pid)
+        spawn('taskkill', ['/pid', String(child.pid), '/T', '/F']);
+      else child.kill();
       reject(new Error(`external engine timed out after ${o.timeoutMs}ms`));
     }, o.timeoutMs);
     child.stdout.on('data', (d: Buffer) => {

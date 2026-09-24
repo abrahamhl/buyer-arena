@@ -227,7 +227,7 @@ var heroL='<div><div class="count"><b>'+D.meta.buyers+'</b> BUYERS <span>·</spa
  (C?'<div class="vs"><span class="b">'+h(B.toUpperCase())+'</span> → <span class="c">'+h(K.toUpperCase())+'</span></div>':'<div class="vs">'+h(V.join(', ').toUpperCase())+'</div>')+
  '<div style="margin-top:14px"><span class="badge proxy">CONVERSION PROXY</span>'+(C?'<span class="badge">'+h(C.label)+'</span>':'')+'</div></div>';
 var heroR='';
-if(C){var hd=C.headline;heroR='<div class="headline"><h2>Goal completion delta</h2><div class="big'+(hd.delta<0?' neg':'')+'">'+fd(hd.delta,'pct')+'</div><div class="dim mono" style="margin-top:8px">'+pct(sum(B).completion.rate)+' → '+pct(sum(K).completion.rate)+' · 95% interval '+fd(hd.lo,'pct')+' … '+fd(hd.hi,'pct')+' · n='+C.n_pairs+' paired buyers</div></div>'}
+if(C){var hd=C.headline;heroR='<div class="headline"><h2>Goal completion delta</h2><div class="big'+(hd.delta<0?' neg':'')+'">'+fd(hd.delta,'pct')+'</div><div class="dim mono" style="margin-top:8px">'+pct(sum(B).completion.rate)+' → '+pct(sum(K).completion.rate)+' · 95% interval '+fd(hd.lo,'pct')+' … '+fd(hd.hi,'pct')+' · n='+C.n_pairs+' paired buyers</div><div class="dim mono" style="margin-top:6px">'+C.discordant.gained+' buyer(s) flipped fail → complete · '+C.discordant.lost+' flipped complete → fail</div></div>'}
 else{var s0=sum(K);heroR='<div class="headline"><h2>Goal completion</h2><div class="big">'+pct(s0.completion.rate)+'</div><div class="dim mono" style="margin-top:8px">95% Wilson '+pct(s0.completion.lo)+' … '+pct(s0.completion.hi)+' · n='+s0.n+'</div></div>'}
 $('hero').innerHTML=heroL+heroR;
 
@@ -269,7 +269,7 @@ tabs('frictionTabs',renderFriction,K);
 $('blv').textContent=D.backlog_variant;$('formula').textContent=D.meta.formula;
 $('backlog').innerHTML=D.backlog.length?D.backlog.map(function(o){var f=o.factors;
  return '<div class="bl"><div class="rk">#'+o.rank+'</div><div><h3>'+h(o.title)+' '+(o.status?'<span class="chip '+o.status+'">'+o.status.toUpperCase()+'</span>':'')+'<span class="chip '+(o.claim==='inference'?'inference':'hypothesis')+'">'+o.claim.toUpperCase()+'</span></h3>'+
- '<div class="exp">'+h(o.experiment)+'</div><div class="fx">affected '+o.affected+' · severity '+f.severity+' · goal impact '+f.goal_impact.toFixed(2)+' · confidence '+f.confidence+' · effort '+f.effort+' · reversibility '+f.reversibility+' · testability '+f.testability+'</div><div style="margin-top:6px">'+o.evidence_ids.slice(0,4).map(ev).join('')+'</div></div>'+
+ '<div class="exp">'+h(o.experiment)+'</div><div class="fx">if fixed: up to +'+Math.round(o.ceiling_pp*100)+'pp goal completion (journeys that ended here) · affected '+o.affected+' · severity '+f.severity+' · goal impact '+f.goal_impact.toFixed(2)+' · confidence '+f.confidence+' · effort '+f.effort+' · reversibility '+f.reversibility+' · testability '+f.testability+'</div><div style="margin-top:6px">'+o.evidence_ids.slice(0,4).map(ev).join('')+'</div></div>'+
  '<div class="sc"><b>'+o.score+'</b><span class="lev '+o.leverage.split(' ')[0]+'">'+h(o.leverage)+'</span></div></div>'}).join(''):'<p class="dim">No actionable friction with evidence.</p>';
 
 // AUDITORS
@@ -281,7 +281,8 @@ function renderAudit(v){var au=D.audits[v];if(!au)return;
   au.consensus.map(function(c){return '<div class="cs"><h3><span class="mono dim">'+h(c.id)+'</span> '+h(c.title)+' <span class="chip '+c.severity+'">'+c.severity+'</span><span class="chip">confidence '+c.confidence+'</span></h3>'+
   '<div class="fact"><span class="chip fact">OBSERVED FACT</span> '+h(c.observed_fact)+'</div>'+
   '<div class="interp"><span class="chip '+c.claim+'">'+c.claim.toUpperCase()+'</span> '+h(c.interpretation.replace(/^Likely cause \\([a-z]+\\): /,'Likely cause: '))+'</div>'+
-  '<div class="dim" style="font-size:12px">supported by '+c.supporters.map(function(s){return '<span class="chip">'+s+'</span>'}).join('')+' · experiment: '+h(c.proposed_experiments[0]||'')+'</div>'+
+  (c.counterfactual?'<div class="interp"><span class="chip fact">COUNTERFACTUAL</span> '+h(c.counterfactual)+'</div>':'')+
+  '<div class="dim" style="font-size:12px">sources '+(c.sources||[]).map(function(s){return '<span class="chip">'+s+'</span>'}).join('')+' · auditors '+c.supporters.map(function(s){return '<span class="chip">'+s+'</span>'}).join('')+' · experiment: '+h(c.proposed_experiments[0]||'')+'</div>'+
   c.challenges.map(function(x){return '<div class="chal">RED TEAM: '+h(x.text)+'</div>'}).join('')+
   '<div style="margin-top:6px">'+c.evidence_ids.slice(0,5).map(ev).join('')+'</div></div>'}).join('')}
 tabs('auditTabs',renderAudit,K);

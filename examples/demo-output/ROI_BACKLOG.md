@@ -14,30 +14,33 @@
 | Reached sign-up | 60% | 75% | +15pp | −15pp … +45pp |
 | Runs with browser errors | 55% | 0% | −55pp | −75pp … −35pp |
 | Friction events / buyer | 1.15 | 1.45 | +0.30 | −0.40 … +0.95 |
+| Steps to goal (n=8 completed on both) | 8.1 | 4 | −4.1 | −4.8 … −3.5 |
 | Median steps (all journeys) | 7 | 4 | −3 | — |
-| Median steps to goal | 8.5 | 4 | −4.5 | — |
-| Median time to goal | 1.5s | 874ms | −644ms | — |
 
 ## Ranked experiments
 
 ### #1 Pop-up interrupts the journey — HIGH-LEVERAGE EXPERIMENT
 
-- **Finding:** F-001 · score **48.8** · NEW — introduced by this version
-- **Evidence:** 20/20 buyers affected · `candidate-p-001:e5`, `candidate-p-002:e5`, `candidate-p-003:e5`, `candidate-p-004:e5`, `candidate-p-005:e5`, `candidate-p-006:e5`
-- **Observed fact:** 20/20 synthetic buyers on "candidate" showed this signal; 5 of them did not complete the goal. Evidence spans 12 journey(s).
-- **Inference:** a pop-up interrupts the first visit and can be hard to dismiss (especially on phones).
-- **Auditors in support:** ux, customer
-- **Confidence:** high · **Effort:** low · **Reversibility:** 0.95 · **Testability:** 0.95
+- **Finding:** F-004 · score **7.8** · NEW — introduced by this version
+- **Evidence:** 4/20 buyers affected · `candidate-p-004:e5`, `candidate-p-009:e5`, `candidate-p-014:e5`, `candidate-p-019:e5`, `candidate-p-004:e8`, `candidate-p-009:e8`
+- **Observed fact:** 4/20 synthetic buyers on "candidate" showed this signal; 4 ended their journey at it. Showing evidence from 4 of 4 journey(s).
+- **Hypothesis:** a pop-up interrupts the first visit and can be hard to dismiss (especially on phones).
+- **Independent sources:** detector
+- **Auditors in support:** ux, customer · **challenged by red team:** "Pop-up interrupts the journey" occurs only in segment "On-the-go tradesperson". It may be a segment-specific need, not a product-wide defect. / "Pop-up interrupts the journey" is decided by the pop-up tolerance (gives up after 2 dismissal attempts) in the deterministic buyer. Its frequency reflects that design choice, not observed human behaviour.
+- **Confidence:** low · **Effort:** low · **Reversibility:** 0.95 · **Testability:** 0.95
+- **If fixed:** up to +20pp goal completion (journeys that ended at this friction)
 - **Suggested experiment:** Delay the pop-up until engagement (or remove it) and guarantee a visible close button on small screens.
 
 ### #2 Cheapest plan above buyer budget — LOW
 
-- **Finding:** F-005 · score **0.1** · PERSISTING — also present in the baseline
+- **Finding:** F-005 · score **0.4** · PERSISTING — also present in the baseline
 - **Evidence:** 1/20 buyers affected · `candidate-p-001:e8`, `candidate-p-001:e9`
-- **Observed fact:** 1/20 synthetic buyers on "candidate" showed this signal; 1 of them did not complete the goal. Evidence spans 1 journey(s).
+- **Observed fact:** 1/20 synthetic buyers on "candidate" showed this signal; 1 ended their journey at it. Showing evidence from 1 of 1 journey(s).
 - **Hypothesis:** the entry plan is above the budget of a price-sensitive segment.
-- **Auditors in support:** business · **challenged by red team:** Only 1 journey(s) show "Cheapest plan above buyer budget". Too few to generalise; could be one persona's configuration. / "Cheapest plan above buyer budget" is triggered by objections configured on the personas. The deterministic buyer faithfully acts them out, so the frequency reflects the population design, not observed human behaviour.
+- **Independent sources:** detector
+- **Auditors in support:** business · **challenged by red team:** Only 1 journey(s) show "Cheapest plan above buyer budget". Too few to generalise; could be one persona's configuration. / "Cheapest plan above buyer budget" is decided by objections configured on the personas in the deterministic buyer. Its frequency reflects that design choice, not observed human behaviour.
 - **Confidence:** low · **Effort:** high · **Reversibility:** 0.5 · **Testability:** 0.6
+- **If fixed:** up to +5pp goal completion (journeys that ended at this friction)
 - **Suggested experiment:** Test a lower-priced entry tier or annual discount for budget-constrained buyers.
 
 ## Resolved by candidate
@@ -55,13 +58,13 @@
 ## How the score works
 
 ```
-score = 100 × frequency × severity × (0.5 + 0.5 × goal_impact) × (0.75 + 0.25 × segment_breadth) × confidence × (0.5 + 0.25 × reversibility + 0.25 × testability) / effort_cost
+score = 100 × frequency × (0.1 + 0.9 × goal_impact) × confidence × (0.5 + 0.25 × reversibility + 0.25 × testability) / effort_cost   [≈ confidence-weighted pp of goal completion recoverable per unit of effort]
 ```
 
-- `frequency` = affected buyers / population · `goal_impact` = affected buyers who did not complete / affected
-- `severity` low .25 · medium .5 · high .8 · critical 1 — `confidence` low .4 · medium .7 · high 1
-- `effort_cost` low 1 · medium 2 · high 4 (defaults from the playbook; override per team)
-- Labels: ≥15 HIGH-LEVERAGE EXPERIMENT · ≥5 MEDIUM · otherwise LOW
+- `frequency` = affected buyers / population · `goal_impact` = affected buyers whose journey ENDED at this friction / affected
+- `frequency × goal_impact` is the "if fixed" ceiling; the score is that ceiling in pp, weighted by confidence and ease of testing, per unit of effort
+- `confidence` low .4 · medium .7 · high 1 (lowered by red-team challenges) · `effort_cost` low 1 · medium 2 · high 4 (playbook defaults; override per team)
+- Labels: ≥5 HIGH-LEVERAGE EXPERIMENT · ≥2 MEDIUM · otherwise LOW
 
 ## Caveats
 
@@ -69,3 +72,6 @@ score = 100 × frequency × severity × (0.5 + 0.5 × goal_impact) × (0.75 + 0.
 - Sample: 20 paired synthetic buyers. Below 30 pairs every delta is an EXPLORATORY SIGNAL.
 - Intervals: paired percentile bootstrap (2,000 resamples, seeded) over personas; they describe variability within this synthetic population only.
 - Buyer policy "heuristic" is deterministic: repeated runs give identical journeys, so intervals reflect persona diversity, not behavioural randomness.
+- Goal completion flips: 7 buyer(s) failed on baseline and completed on candidate; 0 did the opposite.
+- "Resolved" means the friction was not observed on the candidate. It can also disappear because buyers no longer reach the stage where it occurs.
+- A CONSISTENT SYNTHETIC EFFECT label means the result is stable over the persona generator; interval width shrinks with --size and says nothing about real customers.

@@ -203,13 +203,27 @@ function finish(res: PipelineResult, open?: boolean): void {
   log(`  ${c.bold('Report')}      ${rel(res.reports.html)}`);
   log(`  ${c.bold('ROI backlog')} ${rel(res.reports.backlog)}`);
   log(
-    `  ${c.bold('Session')}     ${res.session.manifest.session_id} ${c.dim(`(${res.session.executed} run, ${res.session.skipped} resumed, status ${res.session.manifest.status})`)}`,
+    `  ${c.bold('Session')}     ${res.session.manifest.session_id} ${c.dim(`(${res.session.executed} journeys run, ${res.session.skipped} resumed, status ${res.session.manifest.status})`)}`,
   );
   const usage = res.session.manifest.usage;
   if (usage.length)
     log(
       `  ${c.bold('LLM cost')}    ≈ $${usage.reduce((s, u) => s + u.estimated_cost_usd, 0).toFixed(4)} ${c.dim(usage.map((u) => `${u.provider}:${u.model} ${u.calls} calls`).join(', '))}`,
     );
+  const topEv = res.analysis.backlog[0]?.evidence_ids[0];
+  const firstFail =
+    res.session.runs.find((r) => topEv?.startsWith(`${r.run_id}:`) && !r.goal_completed) ??
+    res.session.runs.find((r) => !r.goal_completed && r.variant === res.analysis.backlog_variant) ??
+    res.session.runs.find((r) => !r.goal_completed);
+
+  log(c.dim('\n  Next:'));
+  log(c.dim(`    open the report         ${rel(res.reports.html)}`));
+  if (firstFail) log(c.dim(`    replay a failed buyer   npm run ba -- replay ${firstFail.run_id}`));
+  log(
+    c.dim(
+      '    try your own app        npm run ba -- compare --baseline <url> --candidate <url> --success-text "<regex>"',
+    ),
+  );
   log('');
   if (open) openInBrowser(res.reports.html);
   if (res.session.manifest.status === 'interrupted' || res.session.manifest.status === 'budget_exhausted')
@@ -473,7 +487,16 @@ program
     const [runId, ev] = ref.includes(':') ? [ref.slice(0, ref.lastIndexOf(':')), ref] : [ref, undefined];
     const dir = resolveSession(f.session, f.root);
     const run = loadRuns(dir).find((r) => r.run_id === runId);
-    if (!run) throw new Error(`run ${runId} not found in ${dir}. Try: buyer-arena status`);
+    if (!run) {
+      const all = loadRuns(dir).map((r) => r.run_id);
+      const near = all.filter((id) => id.includes(runId) || runId.includes(id.split('-').slice(1).join('-')));
+      throw new Error(
+        `run "${runId}" not found. Run ids look like <variant>-<persona>, e.g. ${all[0] ?? 'candidate-p-004'}.` +
+          (near.length
+            ? ` Did you mean: ${near.slice(0, 4).join(', ')}?`
+            : ` Available: ${all.slice(0, 6).join(', ')}${all.length > 6 ? ', …' : ''}`),
+      );
+    }
     const story = join(dir, 'runs', run.variant, run.persona_id, 'story.json');
     log(`\n  ${c.bold(run.run_id)} ${c.dim(`· ${run.segment} · ${run.policy}`)}`);
     if (existsSync(story)) log(`  ${c.dim(readJson<{ narrative: string }>(story).narrative)}`);
@@ -537,8 +560,9 @@ program
   .option('--root <dir>', 'sessions directory', DEFAULT_ROOT)
   .action((f: { root: string }) => {
     const ok = (b: boolean) => (b ? c.green('✓') : c.red('✗'));
-    const nodeOk = Number(process.versions.node.split('.')[0]) >= 20;
-    log(`\n  ${ok(nodeOk)} Node.js ${process.versions.node} ${nodeOk ? '' : c.red('(need ≥ 20)')}`);
+    const [maj, min] = process.versions.node.split('.').map(Number) as [number, number];
+    const nodeOk = maj > 22 || (maj === 22 && min >= 12);
+    log(`\n  ${ok(nodeOk)} Node.js ${process.versions.node} ${nodeOk ? '' : c.red('(need ≥ 22.12)')}`);
     let exe = '';
     try {
       exe = chromium.executablePath();
@@ -561,7 +585,9 @@ program
     );
     log(c.dim('\n  Providers (detected from environment; keys are never printed):'));
     for (const p of detectProviders())
-      log(`  ${p.configured ? c.green('●') : c.dim('○')} ${p.id.padEnd(18)} ${c.dim(p.note)}`);
+      log(
+        `  ${p.configured ? c.green('✓ ready  ') : c.dim('○ not set')} ${p.id.padEnd(18)} ${c.dim(p.note)}`,
+      );
     log(
       c.dim(
         '\n  Default buyers and auditors are deterministic and free. Use --buyer / --auditor to opt into an LLM.\n',

@@ -17,3 +17,39 @@
 - MCP server (stdio) with 8 tools.
 - Budget, call, step, parallelism and timeout limits. Resumable sessions.
 - Bundled demo SaaS "Tallybird" with baseline and candidate versions.
+
+### Hardened after the independent review (same release)
+
+**Safety**
+
+- The same-origin guard now also covers redirects and pop-up windows.
+- Every journey step has a hard deadline, so a hung page or slow model can no longer stall the session.
+
+**Budget and resume**
+
+- The worst-case cost of each call is reserved while it is in flight, so parallel buyers cannot race past the budget.
+- Spend from earlier runs counts against the budget when a session is resumed.
+- Sessions are fingerprinted, and a resume that would mix in a different task, population, target or buyer is refused.
+
+**Robustness**
+
+- Writes are durable (fsync) and retry when Windows briefly locks a file.
+- Unreadable run records count as "not done" instead of crashing.
+- An exception inside one journey becomes an error record for that journey instead of crashing the session.
+
+**Methodology**
+
+- A friction counts as blocking only when the journey ended at it.
+- A pop-up counts as friction only when it actually got in the buyer's way.
+- The rule-based auditors together count as one source. "Inference" now requires independent sources, for example the counterfactual on the other variant.
+- The red team discloses every finding that depends on the buyer's own parameters.
+- Observed facts come only from computed data, and evidence must belong to the same variant.
+- The comparison reports discordant pairs and compares steps to goal only for buyers who completed on both versions.
+- The ROI score is now confidence-weighted percentage points recoverable per unit of effort, with an "if fixed" ceiling.
+
+**Developer experience**
+
+- Requires Node 22.12 or newer.
+- `prepare` now builds the CLI on install.
+- `replay` suggests matching run ids, and the demo ends with a "Next" block.
+- The exact Apache-2.0 license text is included, with a new TRADEMARKS.md and a PR-preview GitHub Action example.

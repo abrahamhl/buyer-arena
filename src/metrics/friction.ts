@@ -117,12 +117,15 @@ export const DETECTORS: Detector[] = [
     title: 'Pop-up interrupts the journey',
     lens: ['ux', 'customer'],
     severity: 'medium',
+    // Fires only when the pop-up actually obstructed: a repeated/failed dismissal or an exit over it.
+    // A single successful "No thanks" is exposure, not friction (still counted in friction/buyer).
     detect: (run) => {
       const ev = ofType(run, 'dismiss_modal');
-      if (ev.length === 0 && !/popup|pop-up/i.test(run.objection ?? '')) return null;
+      const exited = /popup|pop-up/i.test(run.objection ?? '');
+      if (ev.length < 2 && !exited) return null;
       return {
-        evidence: [...ev, ...(/popup/i.test(run.objection ?? '') ? abandonEv(run) : [])],
-        detail: `${ev.length} dismissal attempt(s)`,
+        evidence: [...ev, ...(exited ? abandonEv(run) : [])],
+        detail: `${ev.length} dismissal attempt(s)${exited ? ', then left' : ''}`,
       };
     },
   },
@@ -256,7 +259,11 @@ export function detectFriction(runs: RunRecord[], metrics: RunMetrics[]): Fricti
         variant: run.variant,
         segment: run.segment,
         archetype: run.archetype,
-        blocking: !run.goal_completed,
+        // "Blocking" = the journey ENDED at this friction: the detector's evidence includes the
+        // run's exit event. Co-occurring failures elsewhere in the journey do not count.
+        blocking:
+          !run.goal_completed &&
+          hit.evidence.some((e) => e.type === 'abandon' || e.type === 'objection' || e.type === 'timeout'),
         evidence_ids: [...new Set(hit.evidence.map((e) => e.id))],
         detail: hit.detail,
       });

@@ -26,12 +26,14 @@ export interface Opportunity {
   affected: string;
   evidence_ids: string[];
   experiment: string;
+  /** Upper bound on goal completion recoverable by fixing this item (journeys that ended here / population). */
+  ceiling_pp: number;
   status?: 'persisting' | 'new' | 'resolved';
   claim: ConsensusItem['claim'];
 }
 
 export const ROI_FORMULA =
-  'score = 100 × frequency × severity × (0.5 + 0.5 × goal_impact) × (0.75 + 0.25 × segment_breadth) × confidence × (0.5 + 0.25 × reversibility + 0.25 × testability) / effort_cost';
+  'score = 100 × frequency × (0.1 + 0.9 × goal_impact) × confidence × (0.5 + 0.25 × reversibility + 0.25 × testability) / effort_cost   [≈ confidence-weighted pp of goal completion recoverable per unit of effort]';
 
 const SEVERITY = { low: 0.25, medium: 0.5, high: 0.8, critical: 1 } as const;
 const CONFIDENCE = { low: 0.4, medium: 0.7, high: 1 } as const;
@@ -62,7 +64,7 @@ export function prioritize(
       const affectedRuns = it.affected_runs.length;
       const frequency = Math.min(1, affectedRuns / Math.max(1, opts.population));
       const goal_impact =
-        it.blocking_runs !== null && affectedRuns ? Math.min(1, it.blocking_runs / affectedRuns) : 0.5;
+        it.blocking_runs !== null && affectedRuns ? Math.min(1, it.blocking_runs / affectedRuns) : 0.25;
       const segment_breadth = Math.min(1, it.affected_segments.length / Math.max(1, opts.totalSegments));
       const f = {
         frequency,
@@ -75,12 +77,12 @@ export function prioritize(
         reversibility: play.reversibility,
         testability: play.testability,
       };
+      // frequency × goal_impact = share of ALL buyers whose journey ended here (the "if fixed" ceiling).
+      // Unit: confidence-weighted percentage points of goal completion recoverable per unit of effort.
       const score =
         (100 *
           f.frequency *
-          f.severity *
-          (0.5 + 0.5 * f.goal_impact) *
-          (0.75 + 0.25 * f.segment_breadth) *
+          (0.1 + 0.9 * f.goal_impact) *
           f.confidence *
           (0.5 + 0.25 * f.reversibility + 0.25 * f.testability)) /
         f.effort_cost;
@@ -92,11 +94,12 @@ export function prioritize(
         title: it.title,
         variant: it.variant,
         score: Math.round(score * 10) / 10,
-        leverage: (score >= 15 ? 'HIGH-LEVERAGE EXPERIMENT' : score >= 5 ? 'MEDIUM' : 'LOW') as Leverage,
+        leverage: (score >= 5 ? 'HIGH-LEVERAGE EXPERIMENT' : score >= 2 ? 'MEDIUM' : 'LOW') as Leverage,
         factors: f,
         affected: `${affectedRuns}/${opts.population}`,
         evidence_ids: it.evidence_ids.slice(0, 6),
         experiment: it.proposed_experiments[0] ?? play.experiment,
+        ceiling_pp: (it.blocking_runs ?? 0) / Math.max(1, opts.population),
         status: diff?.status,
         claim: it.claim,
       };

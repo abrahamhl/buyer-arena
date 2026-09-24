@@ -1,4 +1,14 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  fsyncSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeSync,
+} from 'node:fs';
 import { dirname, extname } from 'node:path';
 import YAML from 'yaml';
 
@@ -9,9 +19,28 @@ export function ensureDir(dir: string): void {
 /** Write via temp file + rename so an interrupted process never leaves a half-written record. */
 export function writeFileAtomic(path: string, content: string | Buffer): void {
   ensureDir(dirname(path));
-  const tmp = `${path}.${process.pid}.tmp`;
-  writeFileSync(tmp, content);
-  renameSync(tmp, path);
+  const tmp = `${path}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.tmp`;
+  const fd = openSync(tmp, 'w');
+  try {
+    writeSync(fd, typeof content === 'string' ? Buffer.from(content) : content);
+    fsyncSync(fd); // durable before it becomes visible
+  } finally {
+    closeSync(fd);
+  }
+  // Windows: antivirus/indexers briefly lock files; retry the rename instead of failing the run.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      renameSync(tmp, path);
+      return;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (attempt >= 5 || !['EPERM', 'EBUSY', 'EACCES'].includes(code ?? '')) {
+        rmSync(tmp, { force: true });
+        throw err;
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20 * 2 ** attempt);
+    }
+  }
 }
 
 export function writeJson(path: string, value: unknown): void {

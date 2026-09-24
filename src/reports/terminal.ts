@@ -24,13 +24,13 @@ export function terminalSummary(a: Analysis): string {
     L.push('');
     L.push(
       c.dim(
-        `  ${pad('', 28)}${lpad(cmp.baseline.toUpperCase(), 11)}${lpad(cmp.candidate.toUpperCase(), 12)}${lpad('DELTA', 10)}   95% INTERVAL`,
+        `  ${pad('', 38)}${lpad(cmp.baseline.toUpperCase(), 11)}${lpad(cmp.candidate.toUpperCase(), 12)}${lpad('DELTA', 10)}   95% INTERVAL`,
       ),
     );
     for (const r of cmp.rows) {
       const col = r.verdict === 'improved' ? c.green : r.verdict === 'regressed' ? c.red : c.dim;
       L.push(
-        `  ${pad(r.metric, 28)}${lpad(fmtValue(r.baseline, r.unit), 11)}${lpad(fmtValue(r.candidate, r.unit), 12)}${col(lpad(fmtDelta(r.delta, r.unit), 10))}   ${c.dim(r.ci ? `${fmtDelta(r.ci[0], r.unit)} … ${fmtDelta(r.ci[1], r.unit)}` : '')}`,
+        `  ${pad(r.metric, 38)}${lpad(fmtValue(r.baseline, r.unit), 11)}${lpad(fmtValue(r.candidate, r.unit), 12)}${col(lpad(fmtDelta(r.delta, r.unit), 10))}   ${c.dim(r.ci ? `${fmtDelta(r.ci[0], r.unit)} … ${fmtDelta(r.ci[1], r.unit)}` : '')}`,
       );
     }
   } else {

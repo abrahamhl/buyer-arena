@@ -19,7 +19,8 @@ export interface ComparisonRow {
   ci?: [number, number];
   /** +1 if higher is better, −1 if lower is better. */
   better: 1 | -1;
-  verdict: 'improved' | 'regressed' | 'unchanged';
+  /** 'descriptive' rows have no interval and carry no verdict. */
+  verdict: 'improved' | 'regressed' | 'unchanged' | 'descriptive';
 }
 
 export interface SegmentDelta {
@@ -45,6 +46,8 @@ export interface Comparison {
   n_pairs: number;
   label: SignalLabel;
   headline: DeltaEstimate;
+  /** Paired outcome flips on goal completion: the raw material behind the delta. */
+  discordant: { gained: number; lost: number; both: number; neither: number };
   rows: ComparisonRow[];
   segments: SegmentDelta[];
   friction: FrictionDiff[];
@@ -80,8 +83,7 @@ export function compareVariants(
       seed,
     );
 
-  const sA = summaries.find((s) => s.variant === baseline);
-  const sB = summaries.find((s) => s.variant === candidate);
+  void summaries;
   const headline = boot((m) => (m.goal_completed ? 1 : 0), 11);
 
   const rateRow = (
@@ -114,28 +116,22 @@ export function compareVariants(
     rateRow('Reached sign-up', (m) => m.milestones.signup_started, 1, 14),
     rateRow('Runs with browser errors', (m) => m.browser_errors > 0, -1, 15),
     perBuyer('Friction events / buyer', frictionCount, -1, 16),
-    row(
+    // Survivorship-free: only personas who reached the goal on BOTH versions, with an interval.
+    stepsToGoalRow(pairs.filter(([a, b]) => a.steps_to_goal !== null && b.steps_to_goal !== null)),
+    // Descriptive only: includes buyers who quit early, so fewer steps is not automatically better.
+    descriptive(
       'Median steps (all journeys)',
       'steps',
       median(pairs.map(([a]) => a.steps)),
       median(pairs.map(([, b]) => b.steps)),
-      -1,
-    ),
-    row(
-      'Median steps to goal',
-      'steps',
-      median(pairs.flatMap(([a]) => (a.steps_to_goal === null ? [] : [a.steps_to_goal]))),
-      median(pairs.flatMap(([, b]) => (b.steps_to_goal === null ? [] : [b.steps_to_goal]))),
-      -1,
-    ),
-    row(
-      'Median time to goal',
-      'ms',
-      sA?.median_time_to_goal_ms ?? null,
-      sB?.median_time_to_goal_ms ?? null,
-      -1,
     ),
   ];
+  const discordant = {
+    gained: pairs.filter(([a, b]) => !a.goal_completed && b.goal_completed).length,
+    lost: pairs.filter(([a, b]) => a.goal_completed && !b.goal_completed).length,
+    both: pairs.filter(([a, b]) => a.goal_completed && b.goal_completed).length,
+    neither: pairs.filter(([a, b]) => !a.goal_completed && !b.goal_completed).length,
+  };
 
   const segKeys = [...new Set(pairs.map(([a]) => `${a.archetype}\u0000${a.segment}`))];
   const segments = segKeys.map((k) => {
@@ -180,9 +176,15 @@ export function compareVariants(
       `${excluded} persona(s) without a finished run on both variants were excluded from pairing.`,
     );
 
+  caveats.push(
+    `Goal completion flips: ${discordant.gained} buyer(s) failed on ${baseline} and completed on ${candidate}; ${discordant.lost} did the opposite.`,
+    '"Resolved" means the friction was not observed on the candidate. It can also disappear because buyers no longer reach the stage where it occurs.',
+    'A CONSISTENT SYNTHETIC EFFECT label means the result is stable over the persona generator; interval width shrinks with --size and says nothing about real customers.',
+  );
   return {
     baseline,
     candidate,
+    discordant,
     n_pairs: ids.length,
     label: signalLabel(ids.length, headline.lo, headline.hi),
     headline,
@@ -190,6 +192,36 @@ export function compareVariants(
     segments,
     friction,
     caveats,
+  };
+}
+
+function stepsToGoalRow(both: (readonly [RunMetrics, RunMetrics])[]): ComparisonRow {
+  const pairs = both.map(
+    ([a, b]) => [a.steps_to_goal as number, b.steps_to_goal as number] as [number, number],
+  );
+  if (pairs.length < 2) return descriptive('Steps to goal (completed on both)', 'steps', null, null);
+  const e = pairedBootstrap(pairs, 2000, 17);
+  const mean = (i: 0 | 1) => pairs.reduce((s, p) => s + p[i], 0) / pairs.length;
+  return row(`Steps to goal (n=${pairs.length} completed on both)`, 'steps', mean(0), mean(1), -1, [
+    e.lo,
+    e.hi,
+  ]);
+}
+
+function descriptive(
+  metric: string,
+  unit: ComparisonRow['unit'],
+  a: number | null,
+  b: number | null,
+): ComparisonRow {
+  return {
+    metric,
+    unit,
+    baseline: a,
+    candidate: b,
+    delta: a === null || b === null ? null : b - a,
+    better: -1,
+    verdict: 'descriptive',
   };
 }
 
@@ -203,7 +235,13 @@ function row(
 ): ComparisonRow {
   const delta = a === null || b === null ? null : b - a;
   const eps = unit === 'pct' ? 0.005 : 0.05;
+  // No verdict when there is no interval; "unchanged" when the interval includes zero.
+  const straddles = ci !== undefined && ci[0] <= 0 && ci[1] >= 0;
   const verdict =
-    delta === null || Math.abs(delta) < eps ? 'unchanged' : delta * better > 0 ? 'improved' : 'regressed';
+    delta === null || Math.abs(delta) < eps || straddles
+      ? 'unchanged'
+      : delta * better > 0
+        ? 'improved'
+        : 'regressed';
   return { metric, unit, baseline: a, candidate: b, delta, ci, better, verdict };
 }

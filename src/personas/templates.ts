@@ -214,7 +214,7 @@ export const TEMPLATES: Record<string, PopulationTemplate> = {
           'has only a phone during the day',
         ],
         triggers: [
-          'has five minutes between two jobs',
+          'a job just finished and the customer is waiting',
           'a customer asked for an invoice by email',
           'saw a social media ad',
         ],

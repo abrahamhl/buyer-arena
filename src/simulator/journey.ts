@@ -82,7 +82,7 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
   const memory = newMemory(hashSeed(o.runId));
   const milestones: Partial<Record<Milestone, number>> = {};
   const urlHistory: string[] = [];
-  let status: RunStatus = 'step_limit';
+  let status = 'step_limit' as RunStatus; // widened: assigned inside the per-step closure
   let abandonReason: string | undefined;
   let objection: string | undefined;
   let tracePath: string | undefined;
@@ -103,10 +103,15 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
     locale: o.brief.persona.language,
     serviceWorkers: 'block',
   });
-  // Safety: the buyer may only ever load the origin the user supplied.
+  // Safety: the buyer may only ever load the origin the user supplied (plus the origin the
+  // start URL itself redirects to, e.g. http→https or apex→www).
+  const allowed = new Set([startOrigin]);
+  let lastAllowedUrl = o.brief.start_url;
+  let offsite: string | undefined;
+  let offsiteCount = 0;
   await context.route('**/*', (route) => {
     const u = route.request().url();
-    if (u.startsWith('data:') || u.startsWith('blob:') || new URL(u).origin === startOrigin)
+    if (u.startsWith('data:') || u.startsWith('blob:') || allowed.has(new URL(u).origin))
       return route.continue();
     if (route.request().isNavigationRequest())
       rec.add('blocked_offsite', currentUrl, { detail: new URL(u).origin });
@@ -115,6 +120,12 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
   if (o.trace !== 'off') await context.tracing.start({ screenshots: true, snapshots: true, title: o.runId });
   const page: Page = await context.newPage();
   page.setDefaultTimeout(5_000);
+  // Pop-ups / new tabs are never followed.
+  context.on('page', (p) => {
+    if (p === page) return;
+    rec.add('blocked_offsite', currentUrl, { detail: 'popup window closed' });
+    void p.close().catch(() => undefined);
+  });
 
   page.on('console', (msg) => {
     // Resource-load failures are captured precisely by the response/requestfailed hooks.
@@ -141,6 +152,18 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
   });
   page.on('framenavigated', (frame) => {
     if (frame !== page.mainFrame()) return;
+    // Redirects are not seen by route(); catch any main-frame landing on a foreign origin.
+    try {
+      const origin = new URL(frame.url()).origin;
+      if (!allowed.has(origin) && !frame.url().startsWith('about:')) {
+        offsite = origin;
+        rec.add('blocked_offsite', frame.url(), { detail: `redirected to ${origin}` });
+        return;
+      }
+      lastAllowedUrl = frame.url();
+    } catch {
+      /* non-URL frames */
+    }
     currentUrl = frame.url();
     urlHistory.push(currentUrl);
     memory.visited.push(pathOf(currentUrl));
@@ -167,6 +190,16 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
 
   try {
     await page.goto(o.brief.start_url, { waitUntil: 'domcontentloaded', timeout: 15_000 });
+    if (offsite && offsite !== startOrigin) {
+      // The start URL itself redirected (e.g. http→https): that origin is part of the target.
+      allowed.add(offsite);
+      offsite = undefined;
+      lastAllowedUrl = page.url();
+      currentUrl = page.url();
+      urlHistory.push(currentUrl);
+      memory.visited.push(pathOf(currentUrl));
+      rec.add('navigate', currentUrl);
+    }
     mark('landed', page.url());
 
     for (rec.step = 1; rec.step <= o.maxSteps; rec.step++) {
@@ -176,97 +209,125 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
         rec.add('timeout', page.url(), { detail: `exceeded ${o.timeoutMs}ms` });
         break;
       }
-      const obs = await observe(page);
-      const screenshot = await shot();
-      const blocks = seenBlocks(obs, memory);
-      const pageText = obs.blocks.map((b) => b.text).join('\n');
-      rec.add('observe', obs.url, {
-        detail: obs.title,
-        screenshot,
-        data: {
-          headings: obs.headings.slice(0, 4),
-          elements: obs.elements.length,
-          modal: obs.modalOpen,
-          scrollY: obs.scrollY,
-          alerts: obs.alerts,
-        },
-      });
-      const alertKey = obs.alerts.join('|');
-      if (alertKey && alertKey !== lastAlerts)
-        for (const a of obs.alerts) rec.add('form_error', obs.url, { detail: a });
-      lastAlerts = alertKey;
-
-      // Perception updates (what the buyer has now actually seen).
-      const prices = pricesIn(blocks);
-      if (prices.length) {
-        memory.pricesSeen = [...new Set([...memory.pricesSeen, ...prices])];
-        mark('pricing_found', obs.url, `saw ${[...new Set(prices)].join(', ')}`);
+      if (offsite) {
+        if (++offsiteCount > 2) {
+          status = 'abandoned';
+          abandonReason = 'The site kept sending me to another website.';
+          rec.add('abandon', lastAllowedUrl, { detail: abandonReason });
+          break;
+        }
+        rec.add('back', lastAllowedUrl, { detail: `returned from ${offsite}` });
+        offsite = undefined;
+        await page
+          .goto(lastAllowedUrl, { waitUntil: 'domcontentloaded', timeout: 10_000 })
+          .catch(() => undefined);
       }
-      for (const b of blocks) {
-        const tm = b.text.match(TRUST_RE)?.[0];
-        if (tm && !memory.trustSeen.includes(tm)) memory.trustSeen.push(tm);
-        const dm = b.text.match(DISTRUST_RE)?.[0];
-        if (dm && !memory.distrustSeen.includes(dm)) memory.distrustSeen.push(dm);
-      }
-      const loginOnly = obs.elements.some((e) => e.kind === 'submit' && /sign ?in|log ?in/i.test(e.text));
-      if (!loginOnly && obs.elements.some((e) => e.inputType === 'password' && !e.blocked))
-        mark('signup_started', obs.url);
-      if (
-        checkoutRe.test(pathOf(obs.url)) ||
-        obs.elements.some((e) => /card|cc-number/i.test(`${e.name} ${e.label}`))
-      )
-        mark('checkout_started', obs.url);
+      // Every step races the journey deadline: a hung page or slow model cannot stall the session.
+      const remaining = deadline - Date.now();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const outcome = await Promise.race([
+        (async (): Promise<'continue' | 'break'> => {
+          const obs = await observe(page);
+          const screenshot = await shot();
+          const blocks = seenBlocks(obs, memory);
+          const pageText = obs.blocks.map((b) => b.text).join('\n');
+          rec.add('observe', obs.url, {
+            detail: obs.title,
+            screenshot,
+            data: {
+              headings: obs.headings.slice(0, 4),
+              elements: obs.elements.length,
+              modal: obs.modalOpen,
+              scrollY: obs.scrollY,
+              alerts: obs.alerts,
+            },
+          });
+          const alertKey = obs.alerts.join('|');
+          if (alertKey && alertKey !== lastAlerts)
+            for (const a of obs.alerts) rec.add('form_error', obs.url, { detail: a });
+          lastAlerts = alertKey;
 
-      if (
-        (successRe.url && successRe.url.test(obs.url)) ||
-        (successRe.text && successRe.text.test(pageText))
-      ) {
-        mark('goal_completed', obs.url);
-        rec.add('goal_complete', obs.url, { screenshot });
-        status = 'completed';
+          // Perception updates (what the buyer has now actually seen).
+          const prices = pricesIn(blocks);
+          if (prices.length) {
+            memory.pricesSeen = [...new Set([...memory.pricesSeen, ...prices])];
+            mark('pricing_found', obs.url, `saw ${[...new Set(prices)].join(', ')}`);
+          }
+          for (const b of blocks) {
+            const tm = b.text.match(TRUST_RE)?.[0];
+            if (tm && !memory.trustSeen.includes(tm)) memory.trustSeen.push(tm);
+            const dm = b.text.match(DISTRUST_RE)?.[0];
+            if (dm && !memory.distrustSeen.includes(dm)) memory.distrustSeen.push(dm);
+          }
+          const loginOnly = obs.elements.some((e) => e.kind === 'submit' && /sign ?in|log ?in/i.test(e.text));
+          if (!loginOnly && obs.elements.some((e) => e.inputType === 'password' && !e.blocked))
+            mark('signup_started', obs.url);
+          if (
+            checkoutRe.test(pathOf(obs.url)) ||
+            obs.elements.some((e) => /card|cc-number/i.test(`${e.name} ${e.label}`))
+          )
+            mark('checkout_started', obs.url);
+
+          if (
+            (successRe.url && successRe.url.test(obs.url)) ||
+            (successRe.text && successRe.text.test(pageText))
+          ) {
+            mark('goal_completed', obs.url);
+            rec.add('goal_complete', obs.url, { screenshot });
+            status = 'completed';
+            return 'break';
+          }
+
+          const { action, meta } = await o.policy.decide({
+            brief: o.brief,
+            obs,
+            memory,
+            step: rec.step,
+            maxSteps: o.maxSteps,
+          });
+          const target =
+            'idx' in action && action.idx !== undefined
+              ? obs.elements.find((e) => e.idx === action.idx)
+              : undefined;
+          rec.add('decision', obs.url, {
+            target: describe(target),
+            detail: action.reason,
+            data: { action: action.kind, policy: o.policy.name, ...meta },
+          });
+          memory.actions.push({
+            step: rec.step,
+            kind: action.kind,
+            target: describe(target),
+            url: pathOf(obs.url),
+          });
+
+          if (action.kind === 'abandon') {
+            status = 'abandoned';
+            abandonReason = action.reason;
+            objection = action.objection;
+            if (action.objection)
+              rec.add('objection', obs.url, { target: action.objection, detail: action.reason });
+            rec.add('abandon', obs.url, {
+              detail: action.reason,
+              screenshot,
+              data: { objection: action.objection },
+            });
+            return 'break';
+          }
+          await execute(page, action, obs, rec, memory);
+          if (action.kind === 'click' && target && KW.cta.test(target.text))
+            mark('cta_discovered', obs.url, target.text);
+          await page.waitForLoadState('domcontentloaded', { timeout: 5_000 }).catch(() => undefined);
+          return 'continue';
+        })(),
+        new Promise<'deadline'>((r) => (timer = setTimeout(() => r('deadline'), Math.max(0, remaining)))),
+      ]).finally(() => clearTimeout(timer));
+      if (outcome === 'deadline') {
+        status = 'timeout';
+        rec.add('timeout', currentUrl, { detail: `exceeded ${o.timeoutMs}ms` });
         break;
       }
-
-      const { action, meta } = await o.policy.decide({
-        brief: o.brief,
-        obs,
-        memory,
-        step: rec.step,
-        maxSteps: o.maxSteps,
-      });
-      const target =
-        'idx' in action && action.idx !== undefined
-          ? obs.elements.find((e) => e.idx === action.idx)
-          : undefined;
-      rec.add('decision', obs.url, {
-        target: describe(target),
-        detail: action.reason,
-        data: { action: action.kind, policy: o.policy.name, ...meta },
-      });
-      memory.actions.push({
-        step: rec.step,
-        kind: action.kind,
-        target: describe(target),
-        url: pathOf(obs.url),
-      });
-
-      if (action.kind === 'abandon') {
-        status = 'abandoned';
-        abandonReason = action.reason;
-        objection = action.objection;
-        if (action.objection)
-          rec.add('objection', obs.url, { target: action.objection, detail: action.reason });
-        rec.add('abandon', obs.url, {
-          detail: action.reason,
-          screenshot,
-          data: { objection: action.objection },
-        });
-        break;
-      }
-      await execute(page, action, obs, rec, memory);
-      if (action.kind === 'click' && target && KW.cta.test(target.text))
-        mark('cta_discovered', obs.url, target.text);
-      await page.waitForLoadState('domcontentloaded', { timeout: 5_000 }).catch(() => undefined);
+      if (outcome === 'break') break;
     }
     if (status === 'step_limit') {
       abandonReason = `Ran out of patience after ${o.maxSteps} steps.`;

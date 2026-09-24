@@ -111,7 +111,7 @@ function buildPersona(
         },
     language: 'en',
     motivation: rng.pick(flavor.motivations),
-    goal: `find a ${template.product_noun} that fits and start using it`,
+    goal: `find ${/^[aeiou]/i.test(template.product_noun) ? 'an' : 'a'} ${template.product_noun} that fits and start using it`,
     objections: kept.length || rates ? kept : objections.slice(0, 1),
     prior_experience: rng.sample(flavor.prior_experience, Math.min(2, flavor.prior_experience.length)),
     time_pressure,

@@ -11,7 +11,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        node: [20, 22]
+        node: [22, 24]
     runs-on: ${{ matrix.os }}
     env:
       BUYER_ARENA_OFFLINE: '1' # CI can never reach a paid model
@@ -32,6 +32,7 @@ jobs:
       - run: npm test
       - run: npm run secrets:scan
       - run: npm audit --omit=dev --audit-level=high
+      - run: npm pack --dry-run
       - name: Demo smoke (the README quickstart)
         run: node dist/cli/main.js demo --size 10
       - uses: actions/upload-artifact@v4

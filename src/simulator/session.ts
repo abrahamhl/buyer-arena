@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { chromium, type Browser } from 'playwright';
@@ -43,6 +44,8 @@ export interface SessionOptions {
    * instead of the built-in Playwright runner. See src/engines/external.ts for the contract.
    */
   engineCommand?: string;
+  /** Allow resuming with different variant URLs (e.g. demo stores on new ephemeral ports). */
+  allowTargetChange?: boolean;
   /** Extra terms that must never reach a buyer (hypotheses, change descriptions…). */
   forbiddenTerms?: string[];
   signal?: AbortSignal;
@@ -66,7 +69,11 @@ export interface SessionManifest {
     timeoutMs: number;
     budgetUsd?: number;
   };
-  status: 'running' | 'complete' | 'interrupted' | 'budget_exhausted';
+  status: 'running' | 'complete' | 'interrupted' | 'budget_exhausted' | 'failed';
+  /** Hash of task, population, variants and buyer. A resume must match it. */
+  fingerprint?: string;
+  /** Options needed to resume faithfully. */
+  options?: { engineCommand?: string; forbiddenTerms?: string[]; trace?: TraceMode; screenshots?: boolean };
   runs_total: number;
   runs_done: number;
   usage: Usage[];
@@ -89,7 +96,21 @@ export function sessionsDir(root = DEFAULT_ROOT): string {
 export function newSessionId(): string {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  // Random suffix: two sessions started in the same second must never share a directory.
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}-${randomBytes(2).toString('hex')}`;
+}
+
+function fingerprintOf(o: SessionOptions, buyer: string, withUrls: boolean): string {
+  const payload = JSON.stringify({
+    task: o.task,
+    template: o.population.template,
+    seed: o.population.seed,
+    personas: o.population.personas.map((x) => x.persona_id),
+    variants: o.variants.map((v) => (withUrls ? `${v.name}=${v.url}` : v.name)),
+    buyer,
+    engine: o.engineCommand ?? null,
+  });
+  return createHash('sha256').update(payload).digest('hex').slice(0, 16);
 }
 
 export function runDir(sessionDir: string, variant: string, personaId: string): string {
@@ -103,10 +124,21 @@ export function loadRuns(sessionDir: string): RunRecord[] {
   for (const variant of readdirSync(base)) {
     for (const persona of readdirSync(join(base, variant))) {
       const f = join(base, variant, persona, 'run.json');
-      if (existsSync(f)) out.push(RunRecordSchema.parse(readJson(f)));
+      const rec = existsSync(f) ? readRun(f) : undefined;
+      if (rec) out.push(rec);
     }
   }
   return out.sort((a, b) => a.variant.localeCompare(b.variant) || a.persona_id.localeCompare(b.persona_id));
+}
+
+/** Tolerant reader: an unreadable or invalid record counts as "not done" instead of crashing. */
+function readRun(f: string): RunRecord | undefined {
+  try {
+    const r = RunRecordSchema.safeParse(readJson(f));
+    return r.success ? r.data : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** A run counts as done (and is skipped on resume) only if it reached a terminal, non-error state. */
@@ -126,12 +158,21 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
     Boolean(o.provider) || (o.buyer !== undefined && o.buyer !== 'heuristic' && o.buyer !== 'mock');
   const maxParallel = Math.max(1, o.maxParallel ?? (isLlm ? 2 : 4));
   const timeoutMs = o.timeoutMs ?? (isLlm ? 180_000 : 60_000);
-  const meter = new CostMeter({ budgetUsd: o.budgetUsd ?? (isLlm ? 1 : undefined) });
   const provider = isLlm ? (o.provider ?? createProvider(o.buyer as string)) : undefined;
   const buyerName = provider ? `llm:${provider.name}:${provider.model}` : 'heuristic';
 
   const manifestPath = join(dir, 'session.json');
   const prior = existsSync(manifestPath) ? readJson<SessionManifest>(manifestPath) : undefined;
+  const fingerprint = fingerprintOf(o, buyerName, !o.allowTargetChange);
+  const priorFp = prior?.fingerprint;
+  if (priorFp && !o.allowTargetChange && priorFp !== fingerprint) {
+    throw new Error(
+      `session "${sessionId}" was created with a different task, population, targets or buyer; results cannot be mixed. Use a new --session id.`,
+    );
+  }
+  // Prior spend counts against the budget: resuming never grants a fresh budget.
+  const priorSpend = (prior?.usage ?? []).reduce((a, u) => a + u.estimated_cost_usd, 0);
+  const meter = new CostMeter({ budgetUsd: o.budgetUsd ?? (isLlm ? 1 : undefined) }, priorSpend);
   const manifest: SessionManifest = {
     session_id: sessionId,
     created_at: prior?.created_at ?? new Date().toISOString(),
@@ -147,6 +188,13 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
     runs_total: personas.length * o.variants.length,
     runs_done: 0,
     usage: prior?.usage ?? [],
+    fingerprint,
+    options: {
+      engineCommand: o.engineCommand,
+      forbiddenTerms: o.forbiddenTerms,
+      trace: o.trace,
+      screenshots: o.screenshots,
+    },
   };
   writeJson(manifestPath, manifest);
   writeJson(join(dir, 'population.json'), o.population);
@@ -154,6 +202,13 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
   // Interleave variants per persona so an interrupted session stays balanced.
   const jobs = personas.flatMap((persona) => o.variants.map((variant) => ({ persona, variant })));
   const forbidden = [...o.variants.map((v) => v.name), 'hypothesis', 'variant', ...(o.forbiddenTerms ?? [])];
+  // Fail fast, before any browser starts, if a brief would leak experiment information.
+  for (const { persona, variant } of jobs) {
+    assertNoLeak(
+      buildBrief(persona, buildStory(persona, o.population.template), o.task, variant.url),
+      forbidden,
+    );
+  }
 
   let browserP: Promise<Browser> | undefined;
   const results: RunRecord[] = [];
@@ -161,7 +216,9 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
   let skipped = 0;
   let budgetHit = false;
   const internal = new AbortController();
-  o.signal?.addEventListener('abort', () => internal.abort(), { once: true });
+  if (o.signal?.aborted) internal.abort();
+  else o.signal?.addEventListener('abort', () => internal.abort(), { once: true });
+  let fatal: unknown;
 
   try {
     await mapPool(
@@ -170,19 +227,16 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
       async ({ persona, variant }) => {
         const outDir = runDir(dir, variant.name, persona.persona_id);
         const existing = join(outDir, 'run.json');
-        if (existsSync(existing)) {
-          const prev = RunRecordSchema.parse(readJson(existing));
-          if (isFinal(prev)) {
-            results.push(prev);
-            skipped++;
-            o.onRun?.(prev, { done: results.length, total: jobs.length, skipped: true });
-            return;
-          }
+        const prev = existsSync(existing) ? readRun(existing) : undefined;
+        if (prev && isFinal(prev)) {
+          results.push(prev);
+          skipped++;
+          o.onRun?.(prev, { done: results.length, total: jobs.length, skipped: true });
+          return;
         }
-        if (budgetHit || internal.signal.aborted) return;
+        if (budgetHit || internal.signal.aborted || fatal) return;
         const story = buildStory(persona, o.population.template);
         const brief = buildBrief(persona, story, o.task, variant.url);
-        assertNoLeak(brief, forbidden);
         const runId = `${variant.name}-${persona.persona_id}`;
         let policy: BuyerPolicy = new HeuristicBuyer();
         let runUsage: Usage | undefined;
@@ -190,6 +244,7 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
           policy = new LlmBuyer({
             provider,
             meter,
+            signal: internal.signal,
             onUsage: (res) => {
               runUsage = addUsage(runUsage, new CostMeter().record(provider, res));
             },
@@ -215,26 +270,36 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
           o.onRun?.(run, { done: results.length, total: jobs.length, skipped: false });
           return;
         }
-        browserP ??= chromium.launch({ headless: !o.headed });
-        const browser = await browserP;
-        const run = await runJourney({
-          browser,
-          brief,
-          task: o.task,
-          policy,
-          runId,
-          sessionId,
-          variant: variant.name,
-          segment: persona.segment,
-          archetype: persona.archetype,
-          outDir,
-          maxSteps: Math.min(o.maxSteps ?? Infinity, stepBudget(brief)),
-          timeoutMs,
-          trace: o.trace ?? 'failed',
-          screenshots: o.screenshots ?? true,
-          usage: () => runUsage,
-          signal: internal.signal,
-        });
+        let browser: Browser;
+        try {
+          browserP ??= chromium.launch({ headless: !o.headed });
+          browser = await browserP;
+        } catch (err) {
+          // A browser that cannot start is fatal for the whole session, not for one buyer.
+          fatal ??= err;
+          internal.abort();
+          return;
+        }
+        const run = await safeJourney(common, () =>
+          runJourney({
+            browser,
+            brief,
+            task: o.task,
+            policy,
+            runId,
+            sessionId,
+            variant: variant.name,
+            segment: persona.segment,
+            archetype: persona.archetype,
+            outDir,
+            maxSteps: Math.min(o.maxSteps ?? Infinity, stepBudget(brief)),
+            timeoutMs,
+            trace: o.trace ?? 'failed',
+            screenshots: o.screenshots ?? true,
+            usage: () => runUsage,
+            signal: internal.signal,
+          }),
+        );
         if (run.status === 'budget_exhausted') budgetHit = true;
         if (internal.signal.aborted && run.status === 'error') return; // interrupted mid-run: leave unrecorded
         writeJson(existing, run);
@@ -247,18 +312,25 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
       internal.signal,
     );
   } catch (err) {
-    if (!(err instanceof BudgetExceededError)) throw err;
-    budgetHit = true;
+    if (err instanceof BudgetExceededError) budgetHit = true;
+    else fatal ??= err;
   } finally {
+    // mapPool resolves only after every worker returned, so no journey still uses the browser.
     if (browserP) await (await browserP.catch(() => undefined))?.close().catch(() => undefined);
+    const done = results.filter(isFinal).length;
+    manifest.runs_done = done;
+    manifest.updated_at = new Date().toISOString();
+    manifest.usage = mergeUsage(prior?.usage ?? [], meter.summary());
+    manifest.status = fatal
+      ? 'failed'
+      : budgetHit
+        ? 'budget_exhausted'
+        : done >= jobs.length
+          ? 'complete'
+          : 'interrupted';
+    writeJson(manifestPath, manifest);
   }
-
-  const done = results.filter(isFinal).length;
-  manifest.runs_done = done;
-  manifest.updated_at = new Date().toISOString();
-  manifest.usage = mergeUsage(prior?.usage ?? [], meter.summary());
-  manifest.status = budgetHit ? 'budget_exhausted' : done >= jobs.length ? 'complete' : 'interrupted';
-  writeJson(manifestPath, manifest);
+  if (fatal) throw fatal;
   return {
     dir,
     manifest,
@@ -268,6 +340,53 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
     executed,
     skipped,
   };
+}
+
+/** Convert an unexpected exception inside one journey into an `error` record (retried on resume). */
+async function safeJourney(
+  c: {
+    brief: { persona: { persona_id: string }; start_url: string };
+    runId: string;
+    sessionId: string;
+    variant: string;
+    segment: string;
+    archetype: string;
+  },
+  fn: () => Promise<RunRecord>,
+): Promise<RunRecord> {
+  try {
+    return await fn();
+  } catch (err) {
+    const now = new Date().toISOString();
+    return {
+      run_id: c.runId,
+      session_id: c.sessionId,
+      variant: c.variant,
+      persona_id: c.brief.persona.persona_id,
+      segment: c.segment,
+      archetype: c.archetype,
+      policy: 'unknown',
+      status: 'error',
+      goal_completed: false,
+      steps: 0,
+      elapsed_ms: 0,
+      started_at: now,
+      final_url: c.brief.start_url,
+      url_history: [],
+      milestones: {},
+      events: [
+        {
+          id: `${c.runId}:e0`,
+          seq: 0,
+          step: 0,
+          t: 0,
+          type: 'error',
+          url: c.brief.start_url,
+          detail: String(err instanceof Error ? err.message : err).slice(0, 400),
+        },
+      ],
+    };
+  }
 }
 
 export function addUsage(p: Usage | undefined, u: Usage): Usage {

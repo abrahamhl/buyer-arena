@@ -45,12 +45,6 @@ function confidenceFor(c: FrictionCluster): Confidence {
   return 'low';
 }
 
-function bump(s: Severity, blockingShare: number): Severity {
-  if (blockingShare >= 0.25 && s === 'high') return 'critical';
-  if (blockingShare >= 0.15 && s === 'medium') return 'high';
-  return s;
-}
-
 const fromCluster = (
   c: FrictionCluster,
   finding: string,
@@ -60,10 +54,7 @@ const fromCluster = (
   topic: c.code,
   evidence_ids: spreadEvidence(c),
   affected_segments: segs(c),
-  // Escalate only buyer-facing friction; an engineering error co-occurring with failure is not proof it caused it.
-  severity: c.lens.includes('engineering')
-    ? c.severity
-    : bump(c.severity, c.blocking_runs / Math.max(1, c.population)),
+  severity: c.severity,
   confidence: confidenceFor(c),
   claim: 'inference',
   proposed_experiment: playFor(c.code).experiment,
@@ -80,7 +71,7 @@ export const UX_AUDITOR: Auditor = {
       .map((c) =>
         fromCluster(
           c,
-          `${c.title} — ${share(c)} buyers affected, ${c.blocking_runs} of them did not complete the goal. Likely cause: ${playFor(c.code).likely_cause}.`,
+          `${c.title} — ${share(c)} buyers showed it; ${c.blocking_runs} ended their journey at it. Likely cause: ${playFor(c.code).likely_cause}.`,
         ),
       );
     return out;
@@ -120,6 +111,7 @@ export const BUSINESS_AUDITOR: Auditor = {
           severity: worst.drop / p.population >= 0.25 ? 'high' : 'medium',
           confidence: ev.length >= 4 ? 'high' : 'medium',
           claim: 'observed_fact',
+          computed: true,
           proposed_experiment: `Instrument and test the ${worst.from} → ${reachedLater[0] ?? worst.to} step first; it holds the most recoverable buyers.`,
         });
       }
@@ -140,6 +132,7 @@ export const BUSINESS_AUDITOR: Auditor = {
             severity: s.completion.rate === 0 ? 'high' : 'medium',
             confidence: s.n >= 5 ? 'medium' : 'low',
             claim: 'observed_fact',
+            computed: true,
             proposed_experiment: `Run a segment-targeted variant for "${s.segment}" addressing: ${(s.top_abandon_reason ?? 'the top exit reason').replace(/\.+$/, '')}.`,
           });
         }
@@ -149,7 +142,7 @@ export const BUSINESS_AUDITOR: Auditor = {
       out.push(
         fromCluster(
           c,
-          `${c.title} blocks ${c.blocking_runs}/${c.population} buyers from converting (conversion proxy).`,
+          `${c.title}: ${c.blocking_runs}/${c.population} journeys ended at this friction (conversion proxy).`,
         ),
       );
     }
@@ -165,6 +158,7 @@ export const BUSINESS_AUDITOR: Auditor = {
           severity: 'medium',
           confidence: p.comparison.n_pairs >= 30 ? 'medium' : 'low',
           claim: 'observed_fact',
+          computed: true,
           proposed_experiment:
             'Validate the synthetic delta with a real A/B test before rollout; treat it as a conversion proxy only.',
         });
@@ -195,6 +189,15 @@ export const ENGINEERING_AUDITOR: Auditor = {
   },
 };
 
+/** Findings whose occurrence is set by a parameter of the deterministic buyer (disclosed by the red team). */
+const POLICY_DRIVEN: Record<string, string> = {
+  pricing_not_found: 'the price-sensitivity threshold (≥0.4) and the literacy/device scroll budget',
+  cta_not_found: 'the scroll budget and English CTA keywords',
+  patience_exhausted: 'the step budget derived from time pressure (10/14/18 steps)',
+  intrusive_modal: 'the pop-up tolerance (gives up after 2 dismissal attempts)',
+  form_validation: 'the password-strength rule tied to technical literacy',
+};
+
 const OBJECTION_TOPICS = new Set([
   'trust_gap',
   'required_phone',
@@ -215,8 +218,8 @@ export const CUSTOMER_AUDITOR: Auditor = {
         return fromCluster(
           c,
           OBJECTION_TOPICS.has(c.code)
-            ? `${share(c)} buyers raised this objection and left: ${c.title.toLowerCase()}.${voice}`
-            : `${c.title}: comprehension failure for ${share(c)} buyers.${voice}`,
+            ? `${share(c)} buyers voiced this objection; ${c.blocking_runs} ended their journey on it.${voice}`
+            : `${c.title}: observed for ${share(c)} buyers; ${c.blocking_runs} ended their journey at it.${voice}`,
         );
       });
   },
@@ -259,9 +262,14 @@ export const REDTEAM_AUDITOR: Auditor = {
             'Target the fix to that segment first, or confirm with real segment data (calibration).',
         });
       }
-      if (heuristic && OBJECTION_TOPICS.has(c.code)) {
+      const driver = heuristic
+        ? OBJECTION_TOPICS.has(c.code)
+          ? 'objections configured on the personas'
+          : POLICY_DRIVEN[c.code]
+        : undefined;
+      if (driver) {
         out.push({
-          finding: `"${c.title}" is triggered by objections configured on the personas. The deterministic buyer faithfully acts them out, so the frequency reflects the population design, not observed human behaviour.`,
+          finding: `"${c.title}" is decided by ${driver} in the deterministic buyer. Its frequency reflects that design choice, not observed human behaviour.`,
           topic: c.code,
           evidence_ids: ev,
           affected_segments: segs(c),

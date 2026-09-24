@@ -1,6 +1,6 @@
 import { BudgetExceededError, ProviderError } from '../core/errors.js';
 import type { Usage } from '../core/types.js';
-import { costUsd, estimateTokens } from './pricing.js';
+import { costUsd } from './pricing.js';
 import type { ChatProvider, ChatRequest, ChatResponse } from './types.js';
 
 export interface MeterLimits {
@@ -12,14 +12,22 @@ export interface MeterLimits {
 
 /**
  * Tracks spend and refuses a call BEFORE sending it if its worst-case cost could breach
- * the budget. A session can therefore never exceed `budgetUsd`.
+ * the budget. Worst-case cost is RESERVED while a call is in flight, so parallel buyers
+ * cannot race past the cap, and prior spend (e.g. from a resumed session) is carried in.
+ * The worst case uses a pessimistic token estimate (2 chars/token) plus max output tokens.
  */
 export class CostMeter {
   private totals = new Map<string, Usage>();
-  constructor(readonly limits: MeterLimits = {}) {}
+  private reserved = 0;
+  private inFlight = 0;
+  constructor(
+    readonly limits: MeterLimits = {},
+    /** Spend already incurred before this meter existed (resume). */
+    private readonly priorSpentUsd = 0,
+  ) {}
 
   get spentUsd(): number {
-    let s = 0;
+    let s = this.priorSpentUsd;
     for (const u of this.totals.values()) s += u.estimated_cost_usd;
     return s;
   }
@@ -29,18 +37,33 @@ export class CostMeter {
     return n;
   }
 
-  guard(provider: ChatProvider, req: ChatRequest): void {
-    if (this.limits.maxCalls !== undefined && this.calls >= this.limits.maxCalls) {
+  /** Check limits and reserve the call's worst-case cost. Returns the reservation to release. */
+  reserve(provider: ChatProvider, req: ChatRequest): number {
+    if (this.limits.maxCalls !== undefined && this.calls + this.inFlight >= this.limits.maxCalls) {
       throw new BudgetExceededError(`call limit reached (${this.limits.maxCalls})`);
     }
-    if (this.limits.budgetUsd === undefined) return;
     const inputText = req.system + req.messages.map((m) => m.content).join('\n');
-    const worst = costUsd(provider.pricing, estimateTokens(inputText), req.maxTokens);
-    if (this.spentUsd + worst > this.limits.budgetUsd) {
+    // Pessimistic: 2 chars/token for input plus the full output allowance.
+    const worst = costUsd(provider.pricing, Math.ceil(inputText.length / 2), req.maxTokens);
+    const budget = this.limits.budgetUsd;
+    if (budget !== undefined && this.spentUsd + this.reserved + worst > budget) {
       throw new BudgetExceededError(
-        `budget $${this.limits.budgetUsd.toFixed(4)} would be exceeded (spent $${this.spentUsd.toFixed(4)}, next call up to $${worst.toFixed(4)})`,
+        `budget $${budget.toFixed(4)} would be exceeded (spent $${this.spentUsd.toFixed(4)}, in flight $${this.reserved.toFixed(4)}, next call up to $${worst.toFixed(4)})`,
       );
     }
+    this.reserved += worst;
+    this.inFlight++;
+    return worst;
+  }
+
+  release(reservation: number): void {
+    this.reserved = Math.max(0, this.reserved - reservation);
+    this.inFlight = Math.max(0, this.inFlight - 1);
+  }
+
+  /** Check limits without reserving. */
+  guard(provider: ChatProvider, req: ChatRequest): void {
+    this.release(this.reserve(provider, req));
   }
 
   record(provider: ChatProvider, res: ChatResponse): Usage {
@@ -96,7 +119,8 @@ export async function meteredComplete(
   const retries = opts.retries ?? 2;
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
-    meter.guard(provider, req);
+    if (opts.signal?.aborted) throw new ProviderError('aborted', false);
+    const reservation = meter.reserve(provider, req);
     try {
       const res = await provider.complete(req, opts.signal);
       meter.record(provider, res);
@@ -107,6 +131,8 @@ export async function meteredComplete(
       const retryable = err instanceof ProviderError ? err.retryable : false;
       if (!retryable || attempt === retries) break;
       await sleep(250 * 2 ** attempt);
+    } finally {
+      meter.release(reservation);
     }
   }
   throw lastErr instanceof Error ? lastErr : new ProviderError(String(lastErr), false);

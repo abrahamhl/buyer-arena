@@ -79,7 +79,7 @@ export function createProvider(spec: string, pricing?: ModelPricing): ChatProvid
 export function detectProviders(): { id: string; configured: boolean; note: string }[] {
   const env = process.env;
   return [
-    { id: 'mock', configured: true, note: 'deterministic heuristic buyers (default, free)' },
+    { id: 'heuristic', configured: true, note: 'deterministic buyers + auditors (default, free, offline)' },
     { id: 'anthropic', configured: Boolean(env.ANTHROPIC_API_KEY), note: 'needs ANTHROPIC_API_KEY' },
     { id: 'openai', configured: Boolean(env.OPENAI_API_KEY), note: 'needs OPENAI_API_KEY' },
     { id: 'openai-compatible', configured: Boolean(env.OPENAI_BASE_URL), note: 'needs OPENAI_BASE_URL' },

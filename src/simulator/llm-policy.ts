@@ -31,6 +31,7 @@ export interface LlmPolicyOptions {
   meter: CostMeter;
   maxTokens?: number;
   onUsage?: (res: ChatResponse) => void;
+  signal?: AbortSignal;
   onFallback?: (why: string) => void;
 }
 
@@ -49,7 +50,10 @@ export class LlmBuyer implements BuyerPolicy {
       messages: [{ role: 'user' as const, content: prompt }],
       maxTokens: this.o.maxTokens ?? 300,
     };
-    const res = await meteredComplete(this.o.provider, this.o.meter, req, { onUsage: this.o.onUsage }); // Budget/provider errors propagate to the runner.
+    const res = await meteredComplete(this.o.provider, this.o.meter, req, {
+      onUsage: this.o.onUsage,
+      signal: this.o.signal,
+    }); // Budget/provider errors propagate to the runner.
     const parsed = parseAction(res.text, ctx);
     if (!parsed.ok) {
       this.o.onFallback?.(parsed.error);

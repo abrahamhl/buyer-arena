@@ -54,7 +54,7 @@ export function pairedBootstrap(pairs: [number, number][], iterations = 2000, se
   const mean = (idx: number[]) =>
     idx.reduce((s, i) => s + ((pairs[i] as [number, number])[1] - (pairs[i] as [number, number])[0]), 0) /
     idx.length;
-  if (n === 0) return { delta: 0, lo: 0, hi: 0, n_pairs: 0, iterations: 0, method: 'paired-bootstrap' };
+  if (n === 0) return { delta: NaN, lo: NaN, hi: NaN, n_pairs: 0, iterations: 0, method: 'paired-bootstrap' };
   const all = pairs.map((_, i) => i);
   const rng = new Rng(seed);
   const samples: number[] = [];
