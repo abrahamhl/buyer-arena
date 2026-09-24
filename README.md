@@ -16,14 +16,21 @@ you can compare two versions of your product with the same buyers.
 </div>
 
 ```bash
-git clone https://github.com/<org>/buyer-arena.git && cd buyer-arena
+git clone https://github.com/abrahamhl/buyer-arena.git && cd buyer-arena
 npm install           # also builds the CLI
 npm run demo          # 20 buyers × 2 versions of a demo SaaS · 15–30 s · no API keys
 ```
 
 The first run downloads Playwright's Chromium once (about 150 MB). You need Node 22.12 or newer.
 
-![Buyer Arena report: 20 buyers, 5 segments, baseline → candidate, +35pp goal completion](assets/demo/report-hero.png)
+![Buyer Arena report — light theme, Simple mode](assets/demo/report-hero.png)
+
+<table><tr>
+<td width="62%"><img src="assets/demo/report-dark.png" alt="Expert mode, dark theme"></td>
+<td><img src="assets/demo/report-mobile-nl.png" alt="Mobile, Dutch"></td>
+</tr></table>
+
+**The report is a small app in its own right.** It is available in ES · EN · NL; every text switches, including buyer thoughts, findings and customer stories. It has a **Simple** mode with plain-language advice ("what happened · why · what to do now") and an **Expert** mode with intervals, auditors and the full evidence. A 6-step **in-app guide** walks you through it on first open. It also has light and dark themes and generated avatars for each synthetic customer (no real faces). It is one self-contained HTML file: Inter is embedded and nothing loads from third parties.
 
 ```text
   BUYER ARENA  ·  20 BUYERS  ·  5 SEGMENTS  ·  2 VARIANTS
@@ -154,6 +161,8 @@ consensus stage then applies these rules:
 - **Hypothesis:** everything else, including anything the red team challenges (sample size, one segment only, effects built into the persona configuration).
 
 ![Five auditors → consensus with evidence links](assets/demo/report-auditors.png)
+
+![Friction with buyer quotes and evidence, in Spanish, with the in-app guide](assets/demo/report-guide.png)
 
 ## Evidence model
 

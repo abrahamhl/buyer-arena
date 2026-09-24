@@ -14,7 +14,7 @@ jobs:
         with: { node-version: 22 }
       - name: Install Buyer Arena
         run: |
-          git clone --depth 1 https://github.com/<org>/buyer-arena.git /tmp/buyer-arena
+          git clone --depth 1 https://github.com/abrahamhl/buyer-arena.git /tmp/buyer-arena
           cd /tmp/buyer-arena && npm ci && npx playwright install --with-deps chromium
       - name: Compare production vs this PR's preview
         env:

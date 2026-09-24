@@ -1,14 +1,18 @@
 import type { ElementInfo, Observation, TextBlock } from '../browser/observe.js';
 import { extractPrices } from '../browser/observe.js';
 import type { BuyerBrief } from '../core/types.js';
+import { en_, type I18n } from '../i18n/messages.js';
+
+/** Translatable form of a reason: key + params (see src/i18n/messages.ts). `reason` holds the English text. */
+export type Say = { reason: string; i18n?: I18n };
 
 export type Action =
-  | { kind: 'click'; idx: number; reason: string }
-  | { kind: 'dismiss'; idx?: number; reason: string }
-  | { kind: 'fill_form'; fields: { idx: number; value: string }[]; submitIdx: number; reason: string }
-  | { kind: 'scroll'; reason: string }
-  | { kind: 'back'; reason: string }
-  | { kind: 'abandon'; reason: string; objection?: string };
+  | ({ kind: 'click'; idx: number } & Say)
+  | ({ kind: 'dismiss'; idx?: number } & Say)
+  | ({ kind: 'fill_form'; fields: { idx: number; value: string }[]; submitIdx: number } & Say)
+  | ({ kind: 'scroll' } & Say)
+  | ({ kind: 'back' } & Say)
+  | ({ kind: 'abandon'; objection?: string } & Say);
 
 export interface BuyerMemory {
   /** Paths visited, in order (with repeats). */
@@ -86,4 +90,9 @@ export const DISTRUST_RE = /non-refundable|no refunds|all sales final/i;
 export function pricesIn(blocks: TextBlock[]): number[] {
   // Only count prices in content, not e.g. "€19" in a select option label we have not opened.
   return blocks.flatMap((b) => extractPrices(b.text));
+}
+
+/** Build a reason in English plus its translation key. */
+export function say(k: string, p: Record<string, string | number> = {}): Say {
+  return { reason: en_(k, p), i18n: { k, p } };
 }

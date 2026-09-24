@@ -106,6 +106,13 @@ export const BUSINESS_AUDITOR: Auditor = {
         out.push({
           finding: `Largest funnel leak is ${worst.from} → ${worst.to}: ${worst.drop} of ${p.population} buyers drop here (${pct(worst.drop, p.population)} of the population).`,
           topic: 'funnel_leak',
+          params: {
+            kind: 'funnel_leak',
+            from: `@stage.${worst.from}`,
+            to: `@stage.${worst.to}`,
+            drop: worst.drop,
+            n: p.population,
+          },
           evidence_ids: ev.slice(0, 12),
           affected_segments: [...new Set(leaked.map((r) => r.segment))],
           severity: worst.drop / p.population >= 0.25 ? 'high' : 'medium',
@@ -127,6 +134,12 @@ export const BUSINESS_AUDITOR: Auditor = {
           out.push({
             finding: `Segment "${s.segment}" completes ${pct(s.completed, s.n)} vs ${Math.round(overall * 100)}% overall. Most common exit: ${s.top_abandon_reason ?? 'n/a'}`,
             topic: `segment_gap:${s.archetype}`,
+            params: {
+              kind: 'segment_gap',
+              segment: s.segment,
+              pct: `${Math.round(s.completion.rate * 100)}%`,
+              overall: `${Math.round(overall * 100)}%`,
+            },
             evidence_ids: ev,
             affected_segments: [s.segment],
             severity: s.completion.rate === 0 ? 'high' : 'medium',
@@ -153,6 +166,15 @@ export const BUSINESS_AUDITOR: Auditor = {
         out.push({
           finding: `Goal completion ${p.comparison.candidate} vs ${p.comparison.baseline}: ${h.delta >= 0 ? '+' : ''}${Math.round(h.delta * 100)}pp (95% interval ${Math.round(h.lo * 100)} to ${Math.round(h.hi * 100)}pp, n=${p.comparison.n_pairs} pairs) — ${p.comparison.label}.`,
           topic: 'variant_delta',
+          params: {
+            kind: 'variant_delta',
+            candidate: p.comparison.candidate,
+            baseline: p.comparison.baseline,
+            delta: `${h.delta >= 0 ? '+' : '−'}${Math.abs(Math.round(h.delta * 100))} pp`,
+            lo: `${Math.round(h.lo * 100)} pp`,
+            hi: `${Math.round(h.hi * 100)} pp`,
+            n: p.comparison.n_pairs,
+          },
           evidence_ids: ids.slice(0, 8),
           affected_segments: p.comparison.segments.filter((s) => s.delta !== 0).map((s) => s.segment),
           severity: 'medium',
@@ -241,6 +263,7 @@ export const REDTEAM_AUDITOR: Auditor = {
       if (c.affected < 3) {
         out.push({
           finding: `Only ${c.affected} journey(s) show "${c.title}". Too few to generalise; could be one persona's configuration.`,
+          params: { kind: 'too_few', n: c.affected },
           topic: c.code,
           evidence_ids: ev,
           affected_segments: segs(c),
@@ -252,6 +275,7 @@ export const REDTEAM_AUDITOR: Auditor = {
       } else if (segs(c).length === 1 && c.affected < c.population) {
         out.push({
           finding: `"${c.title}" occurs only in segment "${segs(c)[0]}". It may be a segment-specific need, not a product-wide defect.`,
+          params: { kind: 'single_segment', segment: segs(c)[0] ?? '' },
           topic: c.code,
           evidence_ids: ev,
           affected_segments: segs(c),
@@ -270,6 +294,9 @@ export const REDTEAM_AUDITOR: Auditor = {
       if (driver) {
         out.push({
           finding: `"${c.title}" is decided by ${driver} in the deterministic buyer. Its frequency reflects that design choice, not observed human behaviour.`,
+          params: OBJECTION_TOPICS.has(c.code)
+            ? { kind: 'objection' }
+            : { kind: 'policy', driver: `@drv.${c.code}` },
           topic: c.code,
           evidence_ids: ev,
           affected_segments: segs(c),
@@ -290,6 +317,7 @@ export const REDTEAM_AUDITOR: Auditor = {
         out.push({
           finding: `The variant comparison rests on ${p.comparison.n_pairs} paired synthetic buyers. Treat the delta as an exploratory signal, not proven impact.`,
           topic: 'variant_delta',
+          params: { kind: 'small_sample', n: p.comparison.n_pairs },
           evidence_ids: ids,
           affected_segments: [],
           severity: 'medium',

@@ -229,12 +229,12 @@ export const TEMPLATES: Record<string, PopulationTemplate> = {
           'is a controller at a family business',
         ],
         pains: [
-          'current tool is being discontinued',
-          'auditors flagged messy records',
-          'reconciliation takes days',
+          'is losing the current tool, which is being discontinued',
+          'has had messy records flagged by auditors',
+          'spends days on reconciliation',
         ],
         triggers: [
-          'comparing three alternatives this week',
+          'three alternatives are being compared this week',
           'the board asked for a recommendation',
           'a vendor contract ends next month',
         ],

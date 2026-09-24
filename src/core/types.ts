@@ -64,6 +64,8 @@ export const StorySchema = z.object({
   }),
   /** Human-readable narrative. */
   narrative: z.string(),
+  /** Narrative per UI language (es, en, nl). */
+  narratives: z.record(z.string(), z.string()).optional(),
 });
 export type Story = z.infer<typeof StorySchema>;
 
@@ -208,6 +210,10 @@ export const RunRecordSchema = z.object({
   status: RunStatus,
   goal_completed: z.boolean(),
   abandon_reason: z.string().optional(),
+  /** Translatable form of abandon_reason. */
+  abandon_i18n: z
+    .object({ k: z.string(), p: z.record(z.string(), z.union([z.string(), z.number()])).optional() })
+    .optional(),
   objection: z.string().optional(),
   steps: z.number().int().nonnegative(),
   elapsed_ms: z.number().nonnegative(),
@@ -241,6 +247,8 @@ export const AuditorFindingSchema = z.object({
   proposed_experiment: z.string(),
   /** Set by deterministic auditors when the finding text is computed from aggregates. Never trusted from LLM output. */
   computed: z.boolean().optional(),
+  /** Structured parameters so the UI can render the finding in any language. */
+  params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
 });
 export type AuditorFinding = z.infer<typeof AuditorFindingSchema>;
 

@@ -102,6 +102,7 @@ export interface SegmentSummary {
   completion: Rate;
   median_steps: number | null;
   top_abandon_reason?: string;
+  top_abandon_i18n?: { k: string; p?: Record<string, string | number> };
 }
 
 export interface VariantSummary {
@@ -189,6 +190,16 @@ export function summarizeVariant(variant: string, metrics: RunMetrics[], runs: R
         median_steps: median(g.map((m) => m.steps)),
         // Group by normalised reason, but show a real example so the text stays readable.
         top_abandon_reason: top === undefined ? undefined : raw.find((r) => normalizeReason(r) === top),
+        top_abandon_i18n:
+          top === undefined
+            ? undefined
+            : runs.find(
+                (r) =>
+                  r.archetype === archetype &&
+                  r.variant === variant &&
+                  !r.goal_completed &&
+                  normalizeReason(r.abandon_reason) === top,
+              )?.abandon_i18n,
       };
     }),
     totals: {

@@ -10,6 +10,10 @@ import {
 } from '../metrics/stats.js';
 
 export interface ComparisonRow {
+  /** Stable id for translations: completion, abandonment, pricing, signup, errors, friction, steps_goal, steps_all. */
+  key: string;
+  /** Pairs behind the row when it is a subset (steps_goal). */
+  n?: number;
   metric: string;
   unit: 'pct' | 'count' | 'steps' | 'ms';
   baseline: number | null;
@@ -202,10 +206,13 @@ function stepsToGoalRow(both: (readonly [RunMetrics, RunMetrics])[]): Comparison
   if (pairs.length < 2) return descriptive('Steps to goal (completed on both)', 'steps', null, null);
   const e = pairedBootstrap(pairs, 2000, 17);
   const mean = (i: 0 | 1) => pairs.reduce((s, p) => s + p[i], 0) / pairs.length;
-  return row(`Steps to goal (n=${pairs.length} completed on both)`, 'steps', mean(0), mean(1), -1, [
-    e.lo,
-    e.hi,
-  ]);
+  return {
+    ...row(`Steps to goal (n=${pairs.length} completed on both)`, 'steps', mean(0), mean(1), -1, [
+      e.lo,
+      e.hi,
+    ]),
+    n: pairs.length,
+  };
 }
 
 function descriptive(
@@ -215,6 +222,7 @@ function descriptive(
   b: number | null,
 ): ComparisonRow {
   return {
+    key: keyOf(metric),
     metric,
     unit,
     baseline: a,
@@ -243,5 +251,19 @@ function row(
       : delta * better > 0
         ? 'improved'
         : 'regressed';
-  return { metric, unit, baseline: a, candidate: b, delta, ci, better, verdict };
+  return { key: keyOf(metric), metric, unit, baseline: a, candidate: b, delta, ci, better, verdict };
+}
+
+const KEYS: [RegExp, string][] = [
+  [/^Goal completion/, 'completion'],
+  [/^Abandonment/, 'abandonment'],
+  [/^Pricing found/, 'pricing'],
+  [/^Reached sign-up/, 'signup'],
+  [/^Runs with browser errors/, 'errors'],
+  [/^Friction events/, 'friction'],
+  [/^Steps to goal/, 'steps_goal'],
+  [/^Median steps/, 'steps_all'],
+];
+function keyOf(metric: string): string {
+  return KEYS.find(([re]) => re.test(metric))?.[1] ?? metric;
 }

@@ -1,5 +1,7 @@
 import { hashSeed, Rng } from '../core/rng.js';
 import { StorySchema, type BuyerBrief, type Persona, type Story, type Task } from '../core/types.js';
+import { LANGS, MESSAGES, t, type Lang } from '../i18n/messages.js';
+import { flavor } from '../i18n/stories.js';
 import { OBJECTION_TEXT, TEMPLATES } from '../personas/templates.js';
 
 const TIME_TEXT: Record<Persona['time_pressure'], string> = {
@@ -7,13 +9,6 @@ const TIME_TEXT: Record<Persona['time_pressure'], string> = {
   medium: 'has about twenty minutes before the next thing',
   high: 'has ten minutes before another meeting',
 };
-
-const LITERACY_TEXT = (x: number) =>
-  x >= 0.75
-    ? 'is comfortable with software'
-    : x >= 0.45
-      ? 'gets by with most websites'
-      : 'finds most software confusing';
 
 /** Deterministically turn a persona into a scenario (structured + narrative). */
 export function buildStory(persona: Persona, templateId: string): Story {
@@ -31,18 +26,9 @@ export function buildStory(persona: Persona, templateId: string): Story {
     persona.device.kind === 'mobile' ? 'only has a phone right now' : 'is on a laptop',
     ...persona.objections.map((o) => OBJECTION_TEXT[o] ?? o),
   ];
-  const narrative = [
-    `${first} ${situation}.`,
-    `Right now ${first} ${pain}.`,
-    persona.prior_experience.length ? `Background: ${first} ${persona.prior_experience.join('; and ')}.` : '',
-    `${cap(first)} can spend up to ${persona.budget} ${persona.currency} a month and ${LITERACY_TEXT(persona.technical_literacy)}.`,
-    `${cap(first)} finds this ${template.product_noun} because ${trigger}, and ${TIME_TEXT[persona.time_pressure]}.`,
-    persona.objections.length
-      ? `${cap(first)} ${persona.objections.map((o) => OBJECTION_TEXT[o] ?? o).join(', and ')}.`
-      : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const narratives = Object.fromEntries(
+    LANGS.map((lang) => [lang, narrate(lang, persona, templateId, first, { situation, pain, trigger })]),
+  ) as Record<Lang, string>;
   return StorySchema.parse({
     persona_id: persona.persona_id,
     context: {
@@ -52,11 +38,48 @@ export function buildStory(persona: Persona, templateId: string): Story {
       constraints,
       success_looks_like: `${first} is set up with a ${template.product_noun} within budget`,
     },
-    narrative,
+    narrative: narratives.en,
+    narratives,
   });
 }
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+/** Compose the narrative in one language from keyed sentence templates and translated flavor. */
+function narrate(
+  lang: Lang,
+  persona: Persona,
+  templateId: string,
+  name: string,
+  f: { situation: string; pain: string; trigger: string },
+): string {
+  const tt = (k: string, p: Record<string, string | number> = {}) => t(lang, k, { name, ...p });
+  const lit =
+    persona.technical_literacy >= 0.75
+      ? 'lit.high'
+      : persona.technical_literacy >= 0.45
+        ? 'lit.mid'
+        : 'lit.low';
+  const productKey = `story.product.${templateId}`;
+  const product =
+    MESSAGES[lang][productKey] ??
+    MESSAGES.en[productKey] ??
+    `this ${TEMPLATES[templateId]?.product_noun ?? 'product'}`;
+  return [
+    tt('story.s1', { situation: flavor(f.situation, lang) }),
+    tt('story.s2', { pain: flavor(f.pain, lang) }),
+    persona.prior_experience.length
+      ? tt('story.s3', {
+          prior: persona.prior_experience.map((x) => flavor(x, lang)).join(tt('story.prior_join')),
+        })
+      : '',
+    tt('story.s4', { budget: persona.budget, currency: persona.currency, literacy: tt(lit) }),
+    tt('story.s5', { product, trigger: flavor(f.trigger, lang), time: tt(`time.${persona.time_pressure}`) }),
+    persona.objections.length
+      ? tt('story.s6', { objections: persona.objections.map((o) => tt(`obj.${o}`)).join(tt('story.join')) })
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
 
 /**
  * Build the ONLY context a buyer agent receives. It is assembled from an explicit

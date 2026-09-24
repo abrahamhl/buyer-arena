@@ -1,4 +1,5 @@
 import type { AuditorFinding, Claim, Confidence, JourneyEvent, Severity } from '../core/types.js';
+import type { I18n } from '../i18n/messages.js';
 import type { FrictionCluster } from '../metrics/friction.js';
 import { playFor } from './playbook.js';
 import type { AuditorId } from './rules.js';
@@ -16,6 +17,7 @@ export interface AttributedFinding extends AuditorFinding {
 export interface Counterfactual {
   affected: number;
   flipped: number;
+  other: string;
   text: string;
 }
 
@@ -25,10 +27,21 @@ export interface RejectedFinding {
   reason: string;
 }
 
+/** Translatable renderings of an item (keys in src/i18n/messages.ts; '@key' params are translated too). */
+export interface ItemI18n {
+  title: I18n;
+  fact: I18n;
+  interp: I18n;
+  experiment: I18n;
+  counterfactual?: I18n;
+  challenges: I18n[];
+}
+
 export interface ConsensusItem {
   id: string;
   topic: string;
   title: string;
+  i18n: ItemI18n;
   variant: string;
   /** Directly computed from recorded events. */
   observed_fact: string;
@@ -154,6 +167,7 @@ export function buildConsensus(
     items.push({
       topic,
       title: cluster?.title ?? titleFor(topic, support[0]?.finding),
+      i18n: itemI18n(topic, variant, claim, cluster, computedFact?.params, cf, challenges, runs.length),
       variant,
       observed_fact,
       interpretation,
@@ -183,6 +197,61 @@ export function buildConsensus(
     items: items.map((it, i) => ({ id: `${idPrefix}-${String(i + 1).padStart(3, '0')}`, ...it })),
     rejected,
     findings: valid,
+  };
+}
+
+type Params = Record<string, string | number>;
+
+function itemI18n(
+  topic: string,
+  variant: string,
+  claim: string,
+  cluster: FrictionCluster | undefined,
+  computed: Params | undefined,
+  cf: Counterfactual | undefined,
+  challenges: AttributedFinding[],
+  shown: number,
+): ItemI18n {
+  const challengesI18n = challenges.map((c) => {
+    const { kind, ...p } = c.params ?? {};
+    return kind ? { k: `chal.${kind}`, p } : { k: '@raw', p: { text: c.finding } };
+  });
+  const counterfactual = cf
+    ? { k: 'cf.text', p: { flipped: cf.flipped, affected: cf.affected, other: cf.other } }
+    : undefined;
+  if (cluster) {
+    return {
+      title: { k: `fr.${topic}` },
+      fact: {
+        k: 'fact.cluster',
+        p: { a: cluster.affected, n: cluster.population, b: cluster.blocking_runs, variant, shown },
+      },
+      interp: { k: 'interp.cause', p: { cause: `@cause.${topic}`, claim } },
+      experiment: { k: `exp.${topic}` },
+      counterfactual,
+      challenges: challengesI18n,
+    };
+  }
+  const kind = String(computed?.kind ?? '');
+  const { kind: _k, ...p } = computed ?? {};
+  void _k;
+  if (kind === 'funnel_leak' || kind === 'segment_gap' || kind === 'variant_delta') {
+    return {
+      title: { k: `fr.${kind}`, p },
+      fact: { k: `fact.${kind}`, p },
+      interp: { k: `interp.${kind}` },
+      experiment: { k: `exp.${kind}`, p },
+      counterfactual,
+      challenges: challengesI18n,
+    };
+  }
+  return {
+    title: { k: '@raw', p: { text: topic } },
+    fact: { k: 'fact.unverified' },
+    interp: { k: 'interp.pending' },
+    experiment: { k: '@raw', p: { text: '' } },
+    counterfactual,
+    challenges: challengesI18n,
   };
 }
 

@@ -8,3 +8,4 @@ coverage/
 !.env.example
 test-results/
 .buyer-arena-dev/
+.tmp/

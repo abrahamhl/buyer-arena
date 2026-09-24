@@ -13,6 +13,7 @@ import type {
   Task,
   Usage,
 } from '../core/types.js';
+import { en_, type I18n } from '../i18n/messages.js';
 import { KW } from './heuristic.js';
 import {
   type Action,
@@ -84,6 +85,7 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
   const urlHistory: string[] = [];
   let status = 'step_limit' as RunStatus; // widened: assigned inside the per-step closure
   let abandonReason: string | undefined;
+  let abandonI18n: I18n | undefined;
   let objection: string | undefined;
   let tracePath: string | undefined;
   let currentUrl = o.brief.start_url;
@@ -212,7 +214,8 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
       if (offsite) {
         if (++offsiteCount > 2) {
           status = 'abandoned';
-          abandonReason = 'The site kept sending me to another website.';
+          abandonI18n = { k: 'reason.offsite' };
+          abandonReason = en_('reason.offsite');
           rec.add('abandon', lastAllowedUrl, { detail: abandonReason });
           break;
         }
@@ -292,7 +295,7 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
           rec.add('decision', obs.url, {
             target: describe(target),
             detail: action.reason,
-            data: { action: action.kind, policy: o.policy.name, ...meta },
+            data: { action: action.kind, policy: o.policy.name, i18n: action.i18n, ...meta },
           });
           memory.actions.push({
             step: rec.step,
@@ -304,13 +307,14 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
           if (action.kind === 'abandon') {
             status = 'abandoned';
             abandonReason = action.reason;
+            abandonI18n = action.i18n;
             objection = action.objection;
             if (action.objection)
               rec.add('objection', obs.url, { target: action.objection, detail: action.reason });
             rec.add('abandon', obs.url, {
               detail: action.reason,
               screenshot,
-              data: { objection: action.objection },
+              data: { objection: action.objection, i18n: action.i18n },
             });
             return 'break';
           }
@@ -330,7 +334,8 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
       if (outcome === 'break') break;
     }
     if (status === 'step_limit') {
-      abandonReason = `Ran out of patience after ${o.maxSteps} steps.`;
+      abandonI18n = { k: 'reason.patience', p: { n: o.maxSteps } };
+      abandonReason = en_(abandonI18n.k, abandonI18n.p);
       rec.add('abandon', page.url(), { detail: abandonReason, screenshot: await shot() });
     }
   } catch (err) {
@@ -370,6 +375,7 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
     status,
     goal_completed: status === 'completed',
     abandon_reason: status === 'completed' ? undefined : abandonReason,
+    abandon_i18n: status === 'completed' ? undefined : abandonI18n,
     objection,
     steps: rec.step,
     elapsed_ms: Date.now() - rec.started,

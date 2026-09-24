@@ -192,6 +192,7 @@ function counterfactualsFor(
     out.set(`${variant}\u0000${c.code}`, {
       affected: personas.length,
       flipped,
+      other,
       text: `${flipped}/${personas.length} of these buyers completed the goal on "${other}".`,
     });
   }

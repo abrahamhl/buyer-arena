@@ -7,8 +7,11 @@ import {
   type BuyerPolicy,
   type DecideContext,
   pathOf,
+  say,
+  type Say,
   seenElements,
 } from './policy.js';
+import { en_ } from '../i18n/messages.js';
 
 export const KW = {
   price: /pric|plans?\b|billing|cost|subscription/i,
@@ -82,8 +85,7 @@ export class HeuristicBuyer implements BuyerPolicy {
 
     // 1. Interruptions first: a modal must be dealt with before anything else.
     if (obs.modalOpen) {
-      if (memory.modalsDismissed >= 2)
-        return abandon('A pop-up keeps covering the page and I cannot close it. Leaving.', 'intrusive-popup');
+      if (memory.modalsDismissed >= 2) return abandon(say('reason.popup_quit'), 'intrusive-popup');
       const onScreen = obs.elements.filter(
         (e) => e.y - obs.scrollY < obs.viewport.height && e.y - obs.scrollY >= 0,
       );
@@ -94,9 +96,7 @@ export class HeuristicBuyer implements BuyerPolicy {
         action: {
           kind: 'dismiss',
           idx: close?.idx,
-          reason: close
-            ? `A pop-up covers the page; clicking "${close.text}".`
-            : 'A pop-up covers the page and I cannot see a close button; pressing Escape.',
+          ...(close ? say('reason.popup_close', { text: close.text }) : say('reason.popup_escape')),
         },
       };
     }
@@ -104,7 +104,7 @@ export class HeuristicBuyer implements BuyerPolicy {
     // 2. Hard objections that end the journey.
     if (memory.distrustSeen.length && t.needsTrust) {
       return abandon(
-        `Read "${memory.distrustSeen[0]}" — not comfortable paying without a refund option.`,
+        say('reason.distrust', { text: memory.distrustSeen[0] ?? '' }),
         'needs-refund-guarantee',
       );
     }
@@ -112,7 +112,11 @@ export class HeuristicBuyer implements BuyerPolicy {
       const cheapest = Math.min(...memory.pricesSeen);
       if (cheapest > brief.persona.budget) {
         return abandon(
-          `Cheapest plan is ${cheapest} ${brief.persona.currency}/month; my limit is ${brief.persona.budget}.`,
+          say('reason.too_expensive', {
+            price: cheapest,
+            currency: brief.persona.currency,
+            budget: brief.persona.budget,
+          }),
           'price-too-high',
         );
       }
@@ -137,7 +141,7 @@ export class HeuristicBuyer implements BuyerPolicy {
         action: {
           kind: 'click',
           idx: best.e.idx,
-          reason: `Looking for ${SUBGOAL_TEXT[subgoal]}; "${best.e.text}" looks most promising.`,
+          ...sayWithSub('reason.click', subgoal, { text: best.e.text }),
         },
         meta: {
           subgoal,
@@ -155,7 +159,7 @@ export class HeuristicBuyer implements BuyerPolicy {
       return {
         action: {
           kind: 'scroll',
-          reason: `Nothing about ${SUBGOAL_TEXT[subgoal]} here yet; scrolling down.`,
+          ...sayWithSub('reason.scroll', subgoal),
         },
         meta: { subgoal },
       };
@@ -163,7 +167,7 @@ export class HeuristicBuyer implements BuyerPolicy {
     const menu = visible.find((e) => e.kind === 'button' && KW.menu.test(e.text) && e.expanded === false);
     if (menu && !memory.menuOpened[path]) {
       return {
-        action: { kind: 'click', idx: menu.idx, reason: 'Opening the menu to look for more options.' },
+        action: { kind: 'click', idx: menu.idx, ...say('reason.menu') },
         meta: { subgoal, menu: true },
       };
     }
@@ -172,15 +176,18 @@ export class HeuristicBuyer implements BuyerPolicy {
         action: {
           kind: 'click',
           idx: best.e.idx,
-          reason: `Not sure where ${SUBGOAL_TEXT[subgoal]} is; trying "${best.e.text}".`,
+          ...sayWithSub('reason.guess', subgoal, { text: best.e.text }),
         },
         meta: { subgoal, score: round(best.s), guess: true },
       };
     }
     if (memory.visited.length > 1 && memory.backs < 2) {
-      return { action: { kind: 'back', reason: 'Dead end; going back.' }, meta: { subgoal } };
+      return { action: { kind: 'back', ...say('reason.back') }, meta: { subgoal } };
     }
-    return abandon(GIVE_UP[subgoal], subgoal === 'trust' ? 'needs-refund-guarantee' : undefined);
+    return abandon(
+      say(`reason.giveup.${subgoal}`),
+      subgoal === 'trust' ? 'needs-refund-guarantee' : undefined,
+    );
   }
 
   private subgoal(t: Traits, m: BuyerMemory): Subgoal {
@@ -239,26 +246,18 @@ export class HeuristicBuyer implements BuyerPolicy {
     const { brief, memory, obs } = ctx;
     const p = brief.persona;
     if (memory.formErrors > t.formPatience) {
-      return abandon(
-        `The form keeps rejecting my details (${obs.alerts[0] ?? 'unclear error'}). Giving up.`,
-        'complex-forms',
-      );
+      return abandon(say('reason.form_rejects'), 'complex-forms');
     }
     const phone = els.find((e) => isPhoneField(e) && e.required);
-    if (phone && t.refusesPhone)
-      return abandon('They require my phone number just to sign up. No.', 'no-phone-number');
+    if (phone && t.refusesPhone) return abandon(say('reason.phone'), 'no-phone-number');
     const card = els.find(isCardField);
     if (card) {
       const pageText = obs.blocks.map((b) => b.text).join(' ');
       if (t.refusesCardForTrial && /trial/i.test(pageText)) {
-        return abandon('They want a credit card for a "free" trial. Not doing that.', 'no-card-for-trial');
+        return abandon(say('reason.card_trial'), 'no-card-for-trial');
       }
       const testCard = (card.hint ?? '').match(/(\d{4}[ -]?){3}\d{4}/)?.[0];
-      if (!testCard)
-        return abandon(
-          'Asked for real payment details; a synthetic buyer never enters those.',
-          'payment-details',
-        );
+      if (!testCard) return abandon(say('reason.real_payment'), 'payment-details');
     }
     if (t.needsTrust && memory.trustSeen.length === 0 && (card || els.some(isPasswordField))) {
       // Skeptics want reassurance before committing; look for it once before signing up.
@@ -270,15 +269,12 @@ export class HeuristicBuyer implements BuyerPolicy {
           action: {
             kind: 'click',
             idx: trustLinks[0].idx,
-            reason: `Before signing up, checking "${trustLinks[0].text}" for refund terms.`,
+            ...say('reason.check_refund', { text: trustLinks[0].text }),
           },
           meta: { subgoal: 'trust' },
         };
       }
-      return abandon(
-        'No refund policy or guarantee anywhere before asking me to commit.',
-        'needs-refund-guarantee',
-      );
+      return abandon(say('reason.no_refund'), 'needs-refund-guarantee');
     }
 
     const hintText = [...els.map((e) => e.hint ?? ''), ...obs.alerts].join(' ');
@@ -306,7 +302,7 @@ export class HeuristicBuyer implements BuyerPolicy {
         kind: 'fill_form',
         fields,
         submitIdx: submit.idx,
-        reason: card ? 'Entering the demo test card to start.' : 'Filling in the sign-up form.',
+        ...say(card ? 'reason.fill_card' : 'reason.fill_signup'),
       },
       meta: { knowsPasswordRules: knowsRules, fields: fields.length },
     };
@@ -340,18 +336,13 @@ function pickOption(options: string[], budget: number): string | undefined {
   return affordable[0]?.o ?? priced.sort((a, b) => a.price - b.price)[0]?.o ?? options[0];
 }
 
-const SUBGOAL_TEXT: Record<Subgoal, string> = {
-  price: 'the price',
-  trust: 'refund / guarantee information',
-  commit: 'a way to get started',
-};
-const GIVE_UP: Record<Subgoal, string> = {
-  price: 'Could not find what this costs. Leaving.',
-  trust: 'Could not find any refund or guarantee information. Leaving.',
-  commit: 'Could not figure out how to get started. Leaving.',
-};
+/** A reason that mentions the current subgoal: English text inline, subgoal key for translation. */
+function sayWithSub(k: string, sub: Subgoal, p: Record<string, string | number> = {}): Say {
+  const s = say(k, { ...p, sub: en_(`sub.${sub}`) });
+  return { reason: s.reason, i18n: { k, p: { ...p, sub: `@sub.${sub}` } } };
+}
 
-const abandon = (reason: string, objection?: string): { action: Action } => ({
-  action: { kind: 'abandon', reason, objection },
+const abandon = (s: Say, objection?: string): { action: Action } => ({
+  action: { kind: 'abandon', ...s, objection },
 });
 const round = (n: number) => Math.round(n * 100) / 100;

@@ -72,7 +72,7 @@ describe('real browser journeys against the demo product', () => {
         for (const id of item.evidence_ids) expect(index.has(id)).toBe(true);
     }
     const paths = writeReports(res.dir, analysis);
-    expect(readFileSync(paths.html, 'utf8')).toContain('BUYER ARENA');
+    expect(readFileSync(paths.html, 'utf8')).toContain('Buyer Arena');
     expect(readFileSync(paths.backlog, 'utf8')).toContain('## Ranked experiments');
   });
 
