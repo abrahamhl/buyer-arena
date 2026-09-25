@@ -13,7 +13,33 @@ export const CalibrationInputSchema = z
     /** Smallest group size present in the aggregates (k-anonymity). Groups below 10 are rejected. */
     min_group_size: z.number().int().min(10),
     segments: z.array(z.object({ archetype: z.string(), share: z.number().min(0).max(1) })).optional(),
-    funnel: z.array(z.object({ stage: Milestone, rate: z.number().min(0).max(1) })).optional(),
+    funnel: z
+      .array(
+        z.object({
+          stage: Milestone,
+          rate: z.number().min(0).max(1),
+          /** Visitors that entered this stage (aggregate count; enables Brier/ECE weighting). */
+          n: z.number().int().min(10).optional(),
+        }),
+      )
+      .optional(),
+    /**
+     * What kind of evidence this is. Only real-world aggregates and independent human review
+     * can move a calibration state; a synthetic run never calibrates another synthetic run.
+     */
+    evidence_kind: z.enum(['real_aggregate', 'human_review', 'synthetic']).default('real_aggregate'),
+    /** Observed A/B outcome (aggregate) for directional agreement with the simulated delta. */
+    variant_delta: z
+      .object({
+        metric: z.literal('goal_completed').default('goal_completed'),
+        baseline: z.string(),
+        candidate: z.string(),
+        real_delta_pp: z.number(),
+        significant: z.boolean().optional(),
+      })
+      .optional(),
+    /** Friction topics independently confirmed or refuted (usability study, support tickets…). */
+    finding_labels: z.array(z.object({ topic: z.string(), confirmed: z.boolean() })).optional(),
     objections: z.array(z.object({ objection: z.string(), share: z.number().min(0).max(1) })).optional(),
   })
   .strict();
@@ -29,7 +55,7 @@ export interface Calibration {
 }
 
 /** Turn aggregate patterns into synthetic population parameters. */
-export function calibrate(input: CalibrationInput): Calibration {
+export function calibrate(input: z.input<typeof CalibrationInputSchema>): Calibration {
   const parsed = CalibrationInputSchema.parse(input);
   const notes: string[] = [
     `Calibrated from aggregates: ${parsed.source}${parsed.period ? ` (${parsed.period})` : ''}; min group size ${parsed.min_group_size}.`,
