@@ -448,7 +448,7 @@ export const content = {
     selfAudit: {
       label: 'AUTOAUDITORÍA — NO ES UNA VALIDACIÓN EXTERNA',
       title: 'Buyer Arena sobre sí mismo',
-      text: 'Pasamos launch-check sobre el propio repositorio de Buyer Arena. Una ejecución anterior obtuvo 95/100. La herramienta se puntuó a sí misma: no es evidencia independiente ni la prueba en la que nos apoyamos; esa es el informe real de arriba.',
+      text: 'Pasamos launch-check sobre el propio repositorio de Buyer Arena. La ejecución del 25-09-2026 obtuvo 84/100 (los paneles web miden la tienda demo ficticia, con defectos plantados, no a Buyer Arena). La herramienta se puntuó a sí misma: no es evidencia independiente ni la prueba en la que nos apoyamos; esa es el informe real de arriba.',
       link: 'Abrir el informe de autoauditoría',
     },
     footer: {
@@ -833,7 +833,7 @@ export const content = {
     selfAudit: {
       label: 'SELF-AUDIT — NOT EXTERNAL VALIDATION',
       title: 'Buyer Arena on itself',
-      text: 'We run launch-check on Buyer Arena’s own repository. An earlier run scored 95/100. The tool graded itself, so this is not independent evidence and not the proof we rely on — the real report above is.',
+      text: 'We run launch-check on Buyer Arena’s own repository. The 2026-09-25 run scored 84/100 (its web panels measure the fictional demo store, which has planted defects, not Buyer Arena). The tool graded itself, so this is not independent evidence and not the proof we rely on — the real report above is.',
       link: 'Open the self-audit report',
     },
     footer: {
@@ -1221,7 +1221,7 @@ export const content = {
     selfAudit: {
       label: 'ZELFAUDIT — GEEN EXTERNE VALIDATIE',
       title: 'Buyer Arena op zichzelf',
-      text: 'We draaien launch-check op de eigen repository van Buyer Arena. Een eerdere run scoorde 95/100. De tool beoordeelde zichzelf: dit is geen onafhankelijk bewijs en niet het bewijs waarop we leunen — dat is het echte rapport hierboven.',
+      text: 'We draaien launch-check op de eigen repository van Buyer Arena. De run van 25-09-2026 scoorde 84/100 (de webpanels meten de fictieve demowinkel met ingebouwde fouten, niet Buyer Arena). De tool beoordeelde zichzelf: dit is geen onafhankelijk bewijs en niet het bewijs waarop we leunen — dat is het echte rapport hierboven.',
       link: 'Open het zelfauditrapport',
     },
     footer: {

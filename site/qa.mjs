@@ -82,8 +82,9 @@ for (const f of siteHtml) {
   }
   if (/\bInvestors?\b(?! lens)|Inversión(?![a-z])|\bInvesteerders\b|investors=/.test(text))
     sp(where, 'old "Investors" panel wording');
-  if (/95\s*\/\s*100/.test(text) && !SELF_LABELS.some((x) => text.includes(x)))
-    sp(where, '95/100 shown without the self-audit label');
+  // Any self-audit score (e.g. 84/100) must sit next to the self-audit label.
+  if (/\b\d{2,3}\s*\/\s*100\b/.test(text) && !SELF_LABELS.some((x) => text.includes(x)))
+    sp(where, 'a /100 score shown without the self-audit label');
   // Only first-party assets: scripts, styles, fonts, icons, images.
   const assetRefs = [
     ...h.matchAll(/<script[^>]*\ssrc="([^"]+)"/g),
@@ -395,7 +396,12 @@ try {
   }
 
   if (process.argv.includes('--og')) {
-    const ctx = await browser.newContext({ viewport: { width: 1200, height: 630 }, colorScheme: 'light' });
+    // Reduced motion renders the hero's final frame (never a mid-animation state).
+    const ctx = await browser.newContext({
+      viewport: { width: 1200, height: 630 },
+      colorScheme: 'light',
+      reducedMotion: 'reduce',
+    });
     const page = await ctx.newPage();
     await page.goto(`${ORIGIN}${base}en/`, { waitUntil: 'networkidle' });
     await page.evaluate(() => document.fonts.ready);
