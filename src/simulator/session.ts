@@ -3,6 +3,8 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { Browser } from 'playwright';
 import { launchChromium } from '../core/browser.js';
+import { ResponseCache } from '../models/cache.js';
+import type { RoutingDecision } from '../models/router.js';
 import { currentLedger, type NetworkLedgerV1 } from '../policy/network.js';
 import { BudgetExceededError } from '../core/errors.js';
 import { ensureDir, readJson, writeJson } from '../core/fs.js';
@@ -50,6 +52,10 @@ export interface SessionOptions {
   network?: 'slow3g';
   /** Allow resuming with different variant URLs (e.g. demo stores on new ephemeral ports). */
   allowTargetChange?: boolean;
+  /** Exact response cache for LLM buyers (default on; temperature-0 requests only). */
+  cache?: boolean;
+  /** Routing decision that produced `buyer` (recorded in session.json). */
+  routing?: RoutingDecision;
   /** Extra terms that must never reach a buyer (hypotheses, change descriptions…). */
   forbiddenTerms?: string[];
   signal?: AbortSignal;
@@ -83,6 +89,9 @@ export interface SessionManifest {
   usage: Usage[];
   /** Network policy and everything that was contacted / sent while this session ran. */
   network?: NetworkLedgerV1;
+  /** Cache hits and cascade escalations (token economy). */
+  economy?: { cache_hits: number; escalations: number };
+  routing?: RoutingDecision;
 }
 
 export interface SessionResult {
@@ -179,6 +188,10 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
   // Prior spend counts against the budget: resuming never grants a fresh budget.
   const priorSpend = (prior?.usage ?? []).reduce((a, u) => a + u.estimated_cost_usd, 0);
   // Network policy: every target is checked before a browser starts.
+  const cache =
+    provider && o.cache !== false
+      ? new ResponseCache(join(resolve(o.root ?? DEFAULT_ROOT), 'cache', 'responses'))
+      : undefined;
   const ledger = currentLedger();
   for (const v of o.variants) ledger.check(v.url, 'browser', { explicit: true });
   if (o.engineCommand) {
@@ -262,6 +275,7 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
           policy = new LlmBuyer({
             provider,
             meter,
+            cache,
             signal: internal.signal,
             onUsage: (res) => {
               runUsage = addUsage(runUsage, new CostMeter().record(provider, res));
@@ -341,6 +355,11 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
     manifest.updated_at = new Date().toISOString();
     manifest.usage = mergeUsage(prior?.usage ?? [], meter.summary());
     manifest.network = ledger.snapshot();
+    manifest.economy = {
+      cache_hits: (prior?.economy?.cache_hits ?? 0) + meter.economy.cache_hits,
+      escalations: (prior?.economy?.escalations ?? 0) + meter.economy.escalations,
+    };
+    if (o.routing) manifest.routing = o.routing;
     manifest.status = fatal
       ? 'failed'
       : budgetHit

@@ -4,8 +4,24 @@ import { join, relative, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { Command, Option } from 'commander';
 import { chromiumExecutable } from '../core/browser.js';
-import { printModelDoctor, registerIntegrationCommands, registerRcCommands } from './commands.js';
-import { currentLedger, enterNetworkScope, NetworkLedger, resolvePolicy } from '../policy/network.js';
+import {
+  printModelDoctor,
+  registerEnsembleCommand,
+  registerIntegrationCommands,
+  registerPrCommands,
+  registerRcCommands,
+  registerStaticAuditCommand,
+  resolveBuyerSpec,
+} from './commands.js';
+import { economyReport, renderEconomy } from '../models/economy.js';
+import type { RoutingPolicy } from '../models/router.js';
+import {
+  currentLedger,
+  describeLedger,
+  enterNetworkScope,
+  NetworkLedger,
+  resolvePolicy,
+} from '../policy/network.js';
 import YAML from 'yaml';
 import { analyzeSession } from '../analysis.js';
 import { loadConfig } from '../config.js';
@@ -91,6 +107,8 @@ interface RunFlags {
   headed?: boolean;
   open?: boolean;
   root: string;
+  routing?: string;
+  cache: boolean;
 }
 
 function withRunOptions(cmd: Command): Command {
@@ -108,9 +126,11 @@ function withRunOptions(cmd: Command): Command {
     .option('--instruction <text>', 'task given to every buyer (never mention variants)')
     .option(
       '--buyer <spec>',
-      'buyer engine: heuristic | anthropic:<model> | openai:<model> | lmstudio:<model> | ollama:<model>',
+      'buyer engine: heuristic | auto | anthropic:<model> | openai:<model> | openrouter:<model> | opencode:<provider>/<model> | lmstudio:<model> | ollama:<model>',
       'heuristic',
     )
+    .option('--routing <policy>', 'with --buyer auto: quality | balanced | economy | offline')
+    .option('--no-cache', 'disable the exact response cache for LLM buyers')
     .option('--auditor <spec>', 'optional LLM for the five auditors (default: deterministic)')
     .option(
       '--engine-cmd <command>',
@@ -177,11 +197,14 @@ function applyConfig<T extends RunFlags>(f: T, cmd: Command): T & { variants?: R
   return out;
 }
 
-function sessionOpts(f: RunFlags): Omit<SessionOptions, 'population' | 'task' | 'variants'> {
+async function sessionOpts(f: RunFlags): Promise<Omit<SessionOptions, 'population' | 'task' | 'variants'>> {
+  const { buyer, routing } = await resolveBuyerSpec(f.buyer, f.routing as RoutingPolicy | undefined);
   return {
     root: f.root,
     sessionId: f.session,
-    buyer: f.buyer,
+    buyer,
+    routing,
+    cache: f.cache,
     engineCommand: f.engineCmd,
     maxBuyers: num(f.maxBuyers),
     maxParallel: num(f.maxParallel),
@@ -231,11 +254,8 @@ function finish(res: PipelineResult, open?: boolean): void {
   log(
     `  ${c.bold('Session')}     ${res.session.manifest.session_id} ${c.dim(`(${res.session.executed} journeys run, ${res.session.skipped} resumed, status ${res.session.manifest.status})`)}`,
   );
-  const usage = res.session.manifest.usage;
-  if (usage.length)
-    log(
-      `  ${c.bold('LLM cost')}    ≈ $${usage.reduce((s, u) => s + u.estimated_cost_usd, 0).toFixed(4)} ${c.dim(usage.map((u) => `${u.provider}:${u.model} ${u.calls} calls`).join(', '))}`,
-    );
+  for (const line of renderEconomy(economyReport(res.analysis))) log(c.dim(line));
+  if (res.session.manifest.network) log(c.dim(`  ${describeLedger(res.session.manifest.network)}`));
   const topEv = res.analysis.backlog[0]?.evidence_ids[0];
   const firstFail =
     res.session.runs.find((r) => topEv?.startsWith(`${r.run_id}:`) && !r.goal_completed) ??
@@ -311,7 +331,7 @@ withRunOptions(
   const f = applyConfig(flags, cmd);
   const ac = interruptible();
   const res = await runPipeline({
-    ...sessionOpts(f),
+    ...(await sessionOpts(f)),
     population: loadPop(f),
     task: loadTask(f),
     variants: [{ name: f.variant, url: assertTarget(f.url) }],
@@ -335,7 +355,7 @@ withRunOptions(
     throw new Error('compare needs --baseline <url> and --candidate <url> (or variants in buyer-arena.yaml)');
   const ac = interruptible();
   const res = await runPipeline({
-    ...sessionOpts(f),
+    ...(await sessionOpts(f)),
     population: loadPop(f),
     task: loadTask(f),
     variants: [
@@ -929,6 +949,9 @@ program
 
 registerRcCommands(program);
 registerIntegrationCommands(program);
+registerPrCommands(program);
+registerStaticAuditCommand(program);
+registerEnsembleCommand(program);
 
 program.parseAsync(process.argv).catch((err: unknown) => {
   console.error(c.red(`\n  error: ${err instanceof Error ? err.message : String(err)}\n`));

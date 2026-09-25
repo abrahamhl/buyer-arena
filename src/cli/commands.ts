@@ -4,7 +4,8 @@ import type { Command } from 'commander';
 import { AgentRunEnvelopeSchema } from '../agent/envelope.js';
 import { compareAgentEvals, runAgentEval, type AgentEvalReport } from '../agent/eval.js';
 import { loadConfig } from '../config.js';
-import { ensureDir, readJson } from '../core/fs.js';
+import { ensureDir, readJson, writeFileAtomic } from '../core/fs.js';
+import { renderPrSummary } from '../reports/pr-summary.js';
 import { c, log } from '../core/log.js';
 import { summarizeEvidence } from '../evidence/envelope.js';
 import { readEvidence, writeEvidence } from '../evidence/store.js';
@@ -19,7 +20,13 @@ import {
 } from '../lifecycle/graph.js';
 import { describeSpec, loadCatalog, refreshModelsDev, snapshotPath, STALE_DAYS } from '../models/catalog.js';
 import { modelDoctor } from '../models/doctor.js';
-import { route, ROUTING_POLICIES, type ModelPurpose, type RoutingPolicy } from '../models/router.js';
+import {
+  route,
+  ROUTING_POLICIES,
+  type ModelPurpose,
+  type RoutingDecision,
+  type RoutingPolicy,
+} from '../models/router.js';
 import { currentLedger, describeLedger } from '../policy/network.js';
 
 const catalogFromConfig = () => loadCatalog({ overrides: loadConfig()?.models?.overrides });
@@ -465,4 +472,194 @@ export function registerIntegrationCommands(program: Command): void {
         log(c.dim(`    ${describeLedger(currentLedger().snapshot())}\n`));
       },
     );
+}
+
+/**
+ * `--buyer auto` → ask the router (local models discovered by probing loopback/LAN;
+ * cloud models only when their key is configured). An explicit spec is validated as a
+ * pinned model and never substituted.
+ */
+export async function resolveBuyerSpec(
+  buyer: string,
+  routing: RoutingPolicy | undefined,
+): Promise<{ buyer: string; routing?: RoutingDecision }> {
+  if (buyer === 'heuristic' || buyer === 'mock') return { buyer };
+  const policy: RoutingPolicy | undefined =
+    currentLedger().effectiveMode === 'offline' ? 'offline' : (routing ?? loadConfig()?.models?.routing);
+  if (policy && !ROUTING_POLICIES.includes(policy)) throw new Error(`unknown routing policy ${policy}`);
+  if (buyer !== 'auto') {
+    const d = route(
+      { purpose: 'buyer', pinned: buyer, policy: policy === 'offline' ? 'offline' : undefined },
+      loadCatalog(),
+    );
+    for (const w of d.warnings) log(c.yellow(`  ▲ ${w}`));
+    return { buyer, routing: d };
+  }
+  const local = await modelDoctor({ catalog: loadCatalog() });
+  const discovered = local
+    .filter((r) => r.locality === 'local' && r.reachable)
+    .flatMap((r) => r.models.map((m) => describeSpec(`${r.provider}:${m}`)));
+  const cat = loadCatalog({ overrides: loadConfig()?.models?.overrides, discovered });
+  const env = process.env;
+  const keyed = (p: string) =>
+    (p === 'anthropic' && env.ANTHROPIC_API_KEY) ||
+    (p === 'openai' && env.OPENAI_API_KEY) ||
+    (p === 'openrouter' && env.OPENROUTER_API_KEY);
+  const available = cat.models.filter((m) => m.locality === 'local' || keyed(m.provider)).map((m) => m.spec);
+  const d = route(
+    { purpose: 'buyer', policy, est_input_tokens: 2500, est_output_tokens: 150, est_calls: 200 },
+    cat,
+    { available },
+  );
+  log(c.dim(`  routing ${d.policy.toUpperCase()} → ${d.selected} (${d.selection_reason})`));
+  return { buyer: d.selected, routing: d };
+}
+
+export function registerPrCommands(program: Command): void {
+  program
+    .command('pr-summary')
+    .description('Compact Markdown for a pull-request comment (comparison, friction, security, tests, cost)')
+    .option('--session <id>', 'compare session (default: latest)')
+    .option('--agent-eval <dir>', 'agent-eval output directory')
+    .option('--evidence <file...>', 'evidence for the candidate (security delta)')
+    .option('--baseline-evidence <file...>', 'evidence for the baseline')
+    .option('--report-url <url>', 'link to the full report (e.g. the workflow run)')
+    .option('--out <file>', 'write to a file instead of stdout')
+    .option('--root <dir>', 'sessions directory', '.buyer-arena')
+    .action(
+      async (f: {
+        session?: string;
+        agentEval?: string;
+        evidence?: string[];
+        baselineEvidence?: string[];
+        reportUrl?: string;
+        out?: string;
+        root: string;
+      }) => {
+        const { analyzeSession } = await import('../analysis.js');
+        const { resolveSession } = await import('../workflow.js');
+        let analysis;
+        try {
+          analysis = await analyzeSession(resolveSession(f.session, f.root));
+        } catch {
+          analysis = undefined;
+        }
+        const agentEval = f.agentEval
+          ? readJson<AgentEvalReport>(join(f.agentEval, 'agent-eval.json'))
+          : undefined;
+        const calFile = analysis ? join(resolveSession(f.session, f.root), 'calibration.json') : undefined;
+        const calibrationState =
+          calFile && existsSync(calFile) ? readJson<{ state: string }>(calFile).state : undefined;
+        const md = renderPrSummary({
+          analysis,
+          agentEval,
+          evidence: f.evidence ? collect(f.evidence) : undefined,
+          baselineEvidence: f.baselineEvidence ? collect(f.baselineEvidence) : undefined,
+          reportUrl: f.reportUrl,
+          calibrationState,
+        });
+        if (f.out) writeFileAtomic(resolve(f.out), `${md}\n`);
+        else log(md);
+      },
+    );
+}
+
+export function registerStaticAuditCommand(program: Command): void {
+  program
+    .command('audit-repo')
+    .description('STATIC AUDIT of a public GitHub repository URL — downloads files as data, NO CODE EXECUTED')
+    .argument('<url>', 'github.com/owner/repo')
+    .option('--root <dir>', 'output root', '.buyer-arena')
+    .action(async (url: string, f: { root: string }) => {
+      const { fetchStaticRepo } = await import('../audit/static-repo.js');
+      const { runLaunch } = await import('../launch.js');
+      log(c.yellow('\n  STATIC AUDIT · NO CODE EXECUTED'));
+      const snap = await fetchStaticRepo(url);
+      log(
+        c.dim(
+          `  ${snap.files.length} files (${Math.round(snap.bytes / 1024)} KB) via ${snap.method}; ${snap.skipped} skipped`,
+        ),
+      );
+      try {
+        const res = await runLaunch({
+          root: f.root,
+          repo: snap.dir,
+          name: `${snap.source} — STATIC AUDIT · NO CODE EXECUTED`,
+          mix: 'users=0,segments=0,developers=34,commercial=33,security=33',
+          depth: 'quick',
+          execute: false,
+          staticAudit: {
+            source: snap.source,
+            files: snap.files.length,
+            bytes: snap.bytes,
+            method: snap.method,
+            no_code_executed: true,
+          },
+        });
+        log(
+          `\n  ${c.green('●')} overall ${res.report.overall.score ?? '—'}/100 · ${relative(process.cwd(), res.html)}`,
+        );
+        log(c.dim(`  ${describeLedger(res.report.network ?? currentLedger().snapshot())}\n`));
+      } finally {
+        snap.cleanup();
+      }
+    });
+}
+
+export function registerEnsembleCommand(program: Command): void {
+  program
+    .command('ensemble')
+    .description(
+      'EXPERIMENTAL: compare buyers (heuristic, model A, model B…) that ran the same population and task',
+    )
+    .argument('<sessions...>', 'session ids or directories (same population seed, task and variants)')
+    .option('--root <dir>', 'sessions directory', '.buyer-arena')
+    .option('--json', 'machine-readable output')
+    .action(async (ids: string[], f: { root: string; json?: boolean }) => {
+      const { analyzeSession } = await import('../analysis.js');
+      const { resolveSession } = await import('../workflow.js');
+      const { loadRuns } = await import('../simulator/session.js');
+      const { compareEnsemble } = await import('../ensemble/disagreement.js');
+      const members = await Promise.all(
+        ids.map(async (id) => {
+          const dir = existsSync(id) ? resolve(id) : resolveSession(id, f.root);
+          const analysis = await analyzeSession(dir);
+          const cal = join(dir, 'calibration.json');
+          return {
+            label: analysis.session.buyer,
+            analysis,
+            runs: loadRuns(dir),
+            calibration_mae: existsSync(cal)
+              ? (readJson<{ metrics?: { mae?: number | null } }>(cal).metrics?.mae ?? null)
+              : null,
+          };
+        }),
+      );
+      const r = compareEnsemble(members);
+      if (f.json) return log(JSON.stringify(r, null, 2));
+      log(c.yellow('\n  EXPERIMENTAL · agreement is not truth'));
+      log(
+        c.dim(
+          `  ${'BUYER'.padEnd(40)}${'COMPLETION'.padEnd(12)}${'POP. CI WIDTH'.padEnd(15)}${'COST'.padEnd(10)}CALIB. MAE`,
+        ),
+      );
+      for (const m of r.members)
+        log(
+          `  ${m.buyer.slice(0, 39).padEnd(40)}${`${Math.round(m.completion * 100)}%`.padEnd(12)}${(m.population_ci_width === null ? '—' : `${Math.round(m.population_ci_width * 100)}pp`).padEnd(15)}${`$${m.cost_usd.toFixed(4)}`.padEnd(10)}${m.calibration_mae === null ? 'uncalibrated' : `${(m.calibration_mae * 100).toFixed(1)}pp`}`,
+        );
+      log(
+        c.dim(
+          `\n  ${'PAIR'.padEnd(52)}${'COMPL.'.padEnd(8)}${'KAPPA'.padEnd(8)}${'DECISION'.padEnd(10)}${'FRICTION'.padEnd(10)}TRAJ. DIV`,
+        ),
+      );
+      for (const p of r.pairs)
+        log(
+          `  ${`${p.a} × ${p.b}`.slice(0, 51).padEnd(52)}${`${Math.round(p.completion_agreement * 100)}%`.padEnd(8)}${(p.kappa === null ? '—' : p.kappa.toFixed(2)).padEnd(8)}${`${Math.round(p.decision_agreement * 100)}%`.padEnd(10)}${(p.friction_jaccard === null ? '—' : p.friction_jaccard.toFixed(2)).padEnd(10)}${p.trajectory_divergence.toFixed(2)}`,
+        );
+      log(
+        c.dim(
+          `\n  model disagreement ${r.model_disagreement === null ? '—' : `${Math.round(r.model_disagreement * 100)}%`} · reported separately from population and calibration uncertainty\n`,
+        ),
+      );
+    });
 }

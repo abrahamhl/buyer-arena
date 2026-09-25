@@ -1,4 +1,5 @@
 import { basename, join, resolve } from 'node:path';
+import { buyerArenaVersion } from './core/version.js';
 import { launchToEvidence } from './evidence/builtin.js';
 import { writeEvidence } from './evidence/store.js';
 import { currentLedger, type NetworkLedgerV1 } from './policy/network.js';
@@ -45,6 +46,8 @@ export interface LaunchOptions {
   maxParallel?: number;
   emit?: Emit;
   signal?: AbortSignal;
+  /** Set by `audit-repo`: the repository was downloaded as data; nothing was executed. */
+  staticAudit?: { source: string; files: number; bytes: number; method: string; no_code_executed: true };
 }
 
 export interface LaunchAction {
@@ -80,6 +83,7 @@ export interface LaunchReport {
   network?: NetworkLedgerV1;
   /** Always true: this is Buyer Arena's own synthetic judgement, not external validation. */
   self_generated?: boolean;
+  static_audit?: LaunchOptions['staticAudit'];
 }
 
 export interface LaunchResult {
@@ -301,6 +305,7 @@ export async function runLaunch(o: LaunchOptions): Promise<LaunchResult> {
     id,
     network: currentLedger().snapshot(),
     self_generated: true,
+    static_audit: o.staticAudit,
     generated_at: new Date().toISOString(),
     name: o.name ?? (repo ? basename(repo) : (o.url ?? 'demo')),
     target: {
@@ -324,7 +329,7 @@ export async function runLaunch(o: LaunchOptions): Promise<LaunchResult> {
     duration_ms: Date.now() - t0,
   };
   writeJson(join(dir, 'launch.json'), report);
-  writeEvidence(join(dir, 'evidence.jsonl'), launchToEvidence(report));
+  writeEvidence(join(dir, 'evidence.jsonl'), launchToEvidence(report, buyerArenaVersion()));
   if (analysis) writeJson(join(dir, 'users-analysis.json'), analysis);
   const html = join(dir, 'report.html');
   const md = join(dir, 'LAUNCH_REPORT.md');
