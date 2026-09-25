@@ -34,6 +34,7 @@ export interface Traits {
   usesNav: boolean;
   refusesPhone: boolean;
   refusesCardForTrial: boolean;
+  refusesAccount: boolean;
 }
 
 export function traitsOf(brief: BuyerBrief): Traits {
@@ -49,6 +50,7 @@ export function traitsOf(brief: BuyerBrief): Traits {
     usesNav: lit >= 0.45,
     refusesPhone: p.objections.includes('no-phone-number'),
     refusesCardForTrial: p.objections.includes('no-card-for-trial'),
+    refusesAccount: p.objections.includes('no-account'),
   };
 }
 
@@ -248,6 +250,8 @@ export class HeuristicBuyer implements BuyerPolicy {
     if (memory.formErrors > t.formPatience) {
       return abandon(say('reason.form_rejects'), 'complex-forms');
     }
+    // Buyers who will not create an account leave when the only path is a password sign-up.
+    if (t.refusesAccount && els.some(isPasswordField)) return abandon(say('reason.no_account'), 'no-account');
     const phone = els.find((e) => isPhoneField(e) && e.required);
     if (phone && t.refusesPhone) return abandon(say('reason.phone'), 'no-phone-number');
     const card = els.find(isCardField);

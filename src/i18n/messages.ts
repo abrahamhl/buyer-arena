@@ -4,6 +4,7 @@
  * so switching language changes every text, including buyer reasons, findings and stories.
  * Placeholders: {name}. Keep keys identical across languages (checked by a unit test).
  */
+import { LAUNCH_EN, LAUNCH_ES, LAUNCH_NL } from './launch-messages.js';
 export type Lang = 'es' | 'en' | 'nl';
 export const LANGS: Lang[] = ['es', 'en', 'nl'];
 export type Dict = Record<string, string>;
@@ -1145,7 +1146,11 @@ const nl: Dict = {
   'arch.skeptic': 'sceptisch',
 };
 
-export const MESSAGES: Record<Lang, Dict> = { es, en, nl };
+export const MESSAGES: Record<Lang, Dict> = {
+  es: { ...es, ...LAUNCH_ES },
+  en: { ...en, ...LAUNCH_EN },
+  nl: { ...nl, ...LAUNCH_NL },
+};
 
 export type I18n = { k: string; p?: Record<string, string | number> };
 

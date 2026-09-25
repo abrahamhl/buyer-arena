@@ -667,6 +667,188 @@ program
     await startMcpServer();
   });
 
+/* ───────────── launch readiness: five panels ───────────── */
+
+type Lang3 = 'es' | 'en' | 'nl';
+const starLine = (v: number) => '★'.repeat(Math.floor(v)) + (v % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(v));
+
+program
+  .command('launch-check')
+  .description(
+    'Five synthetic panels (end users, developers, investors, red team, segments) → one launch-readiness report',
+  )
+  .option('--repo <dir>', 'repository to review (developers, investors, red team)')
+  .option('--url <url>', 'live product URL (end users, segments, privacy)')
+  .option('--baseline <url>', 'current version URL (with --candidate: compare)')
+  .option('--candidate <url>', 'new version URL')
+  .option('--demo', 'use the bundled demo store as the web target')
+  .option(
+    '--mix <spec>',
+    'attention per panel, e.g. users=40,developers=15,investors=25,security=10,segments=10',
+  )
+  .option('--size <n>', 'total synthetic participants', '40')
+  .addOption(
+    new Option('--depth <d>', 'how deep each panel goes')
+      .choices(['quick', 'standard', 'deep'])
+      .default('standard'),
+  )
+  .option('--execute', 'install, build and run the repo in a throw-away clone (allow-listed scripts only)')
+  .option('--argus <dir>', 'path to an Argus checkout for the passive website audit (public URLs only)')
+  .option('--brief <file>', 'commitments file for "promised vs built" (default docs/project/brief.yaml)')
+  .option('--task <file>', 'task file (success criteria) for the end-user panel')
+  .option('--success-text <regex>', 'success when this text appears (end-user panel)')
+  .option('--success-url <regex>', 'success when the URL matches (end-user panel)')
+  .option('--instruction <text>', 'what the synthetic buyer is asked to do')
+  .option('--template <name>', 'population template', 'saas')
+  .option('--seed <n>', 'random seed', '42')
+  .option('--name <name>', 'product name shown in the report')
+  .option('--export <formats>', 'also export, e.g. md,csv,pdf,png')
+  .addOption(new Option('--lang <l>', 'language for exports').choices(['es', 'en', 'nl']).default('en'))
+  .option('--no-dashboard', 'plain log lines instead of the live dashboard')
+  .option('--open', 'open the report when done')
+  .option('--root <dir>', 'output root', DEFAULT_ROOT)
+  .action(async (f: RunFlags & Record<string, string | boolean | undefined>) => {
+    const { runLaunch } = await import('../launch.js');
+    const { dashboard } = await import('./dashboard.js');
+    const s = (k: string) => (typeof f[k] === 'string' ? (f[k] as string) : undefined);
+    if (!f.repo && !f.url && !f.demo && !(f.baseline && f.candidate))
+      throw new Error('nothing to review: pass --repo, --url, --demo or --baseline/--candidate');
+    for (const u of [s('url'), s('baseline'), s('candidate')]) if (u) assertTarget(u);
+    const task = f.task || f.successText || f.successUrl ? loadTask(f) : undefined;
+    const ac = interruptible();
+    const dash = dashboard({ tty: f.dashboard !== false && Boolean(process.stdout.isTTY) });
+    log(c.bold('\n  Buyer Arena · launch check\n'));
+    let res: Awaited<ReturnType<typeof runLaunch>>;
+    try {
+      res = await runLaunch({
+        root: String(f.root),
+        repo: s('repo'),
+        url: s('url'),
+        baseline: s('baseline'),
+        candidate: s('candidate'),
+        demo: Boolean(f.demo),
+        mix: s('mix'),
+        size: Number(f.size),
+        depth: s('depth') as 'quick' | 'standard' | 'deep',
+        execute: Boolean(f.execute),
+        argus: s('argus'),
+        brief: s('brief'),
+        task,
+        template: String(f.template),
+        seed: Number(f.seed),
+        name: s('name'),
+        emit: dash.emit,
+        signal: ac.signal,
+      });
+    } finally {
+      dash.stop();
+    }
+    const r = res.report;
+    log(
+      `\n  ${c.bold('Launch readiness')}  ${c.bold(String(r.overall.score ?? '—'))}/100  ${c.yellow(starLine(r.overall.stars))}`,
+    );
+    for (const p of r.panels)
+      if (p)
+        log(
+          `    ${p.id.padEnd(11)} ${String(p.score ?? '—').padStart(3)}  ${c.yellow(starLine(p.stars))}  ${c.dim(p.skipped ? 'skipped: ' + p.skipped : p.share + '%')}`,
+        );
+    const sec = r.panels.find((p) => p?.id === 'security')?.extra as
+      { risk?: number; criticity?: string; agent_risk?: number } | undefined;
+    if (sec?.risk !== undefined)
+      log(
+        `    ${c.dim('risk index')} ${sec.risk}/100 (${sec.criticity}) · ${c.dim('AI-agent risk')} ${sec.agent_risk ?? '—'}/100`,
+      );
+    if (r.actions.length) {
+      log(c.bold('\n  Top actions'));
+      for (const a of r.actions.slice(0, 5))
+        log(`    ${a.rank}. [${a.panel}] ${a.check}  ${c.dim('impact ' + a.impact)}`);
+    }
+    log(
+      `\n  ${c.green('●')} ${relative(process.cwd(), res.html)}\n  ${c.green('●')} ${relative(process.cwd(), res.markdown)}`,
+    );
+    const ex = s('export');
+    if (ex) {
+      const { exportLaunch, EXPORT_FORMATS } = await import('../export.js');
+      const formats = ex.split(',').map((x) => x.trim()) as (typeof EXPORT_FORMATS)[number][];
+      for (const x of formats) if (!EXPORT_FORMATS.includes(x)) throw new Error(`unknown export format ${x}`);
+      for (const file of await exportLaunch(res.dir, { formats, lang: s('lang') as Lang3 }))
+        log(`  ${c.green('●')} ${relative(process.cwd(), file)}`);
+    }
+    log('');
+    if (f.open) openInBrowser(res.html);
+  });
+
+program
+  .command('export')
+  .description(
+    'Export a launch report (whole, one panel or the action plan) as pdf, png, jpg, md, csv or json',
+  )
+  .argument('[dir]', 'launch directory (default: the latest one)')
+  .option('--format <list>', 'comma-separated formats', 'pdf,md,csv')
+  .option('--panel <scope>', 'all | users | developers | investors | security | segments | actions', 'all')
+  .addOption(new Option('--lang <l>', 'language').choices(['es', 'en', 'nl']).default('en'))
+  .option('--out <dir>', 'output folder (default <dir>/exports)')
+  .option('--root <dir>', 'output root', DEFAULT_ROOT)
+  .action(
+    async (
+      dirArg: string | undefined,
+      f: { format: string; panel: string; lang: Lang3; out?: string; root: string },
+    ) => {
+      const { exportLaunch, EXPORT_FORMATS, EXPORT_SCOPES } = await import('../export.js');
+      const { readdirSync, statSync } = await import('node:fs');
+      let dir = dirArg;
+      if (!dir) {
+        const base = resolve(f.root, 'launch');
+        const all = existsSync(base)
+          ? readdirSync(base)
+              .map((d) => join(base, d))
+              .filter((d) => existsSync(join(d, 'launch.json')))
+          : [];
+        all.sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs);
+        dir = all[0];
+        if (!dir) throw new Error('no launch reports yet — run launch-check first');
+      }
+      const formats = f.format.split(',').map((x) => x.trim()) as (typeof EXPORT_FORMATS)[number][];
+      for (const x of formats)
+        if (!EXPORT_FORMATS.includes(x))
+          throw new Error(`unknown format ${x} (${EXPORT_FORMATS.join(', ')})`);
+      if (!(EXPORT_SCOPES as readonly string[]).includes(f.panel))
+        throw new Error(`unknown panel ${f.panel}`);
+      const files = await exportLaunch(dir, {
+        formats,
+        scope: f.panel as (typeof EXPORT_SCOPES)[number],
+        lang: f.lang,
+        out: f.out,
+      });
+      for (const file of files) log(`  ${c.green('●')} ${relative(process.cwd(), file)}`);
+    },
+  );
+
+program
+  .command('studio')
+  .description(
+    'Local web studio: set the attention mix with sliders, run, and watch progress and commands live (127.0.0.1 only)',
+  )
+  .option('--repo <dir...>', 'repositories the studio may review (default: current directory)')
+  .option('--argus <dir>', 'Argus checkout for the passive website audit')
+  .option('--port <n>', 'port (default: random)')
+  .option('--no-open', 'do not open the browser')
+  .option('--root <dir>', 'output root', DEFAULT_ROOT)
+  .action(async (f: { repo?: string[]; argus?: string; port?: string; open: boolean; root: string }) => {
+    const { startStudio } = await import('../studio/server.js');
+    const s = await startStudio({
+      root: f.root,
+      repos: f.repo,
+      argus: f.argus,
+      port: f.port ? Number(f.port) : undefined,
+    });
+    log(
+      `\n  ${c.green('●')} Buyer Arena Studio  ${s.url}\n  ${c.dim('Local only · token in the URL · Ctrl+C to stop')}\n`,
+    );
+    if (f.open) openInBrowser(s.url);
+    process.on('SIGINT', () => void s.close().then(() => process.exit(0)));
+  });
+
 program.parseAsync(process.argv).catch((err: unknown) => {
   console.error(c.red(`\n  error: ${err instanceof Error ? err.message : String(err)}\n`));
   process.exitCode = 1;

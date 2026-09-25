@@ -50,10 +50,16 @@ const pathOnly = (u: string) => {
 };
 
 /** Build the explorer model. Screenshots are referenced relative to the report file. */
-export function journeyViews(sessionDir: string, runs: RunRecord[], personas: Persona[]): JourneyView[] {
+/** `baseDir` is where the HTML file will live, so screenshot paths resolve from it. */
+export function journeyViews(
+  sessionDir: string,
+  runs: RunRecord[],
+  personas: Persona[],
+  baseDir = sessionDir,
+): JourneyView[] {
   return runs.map((r) => {
     const dir = runDir(sessionDir, r.variant, r.persona_id);
-    const rel = relative(sessionDir, dir).split('\\').join('/');
+    const rel = relative(baseDir, dir).split('\\').join('/');
     const storyFile = join(dir, 'story.json');
     const story = existsSync(storyFile) ? readJson<Story>(storyFile) : undefined;
     const p = personas.find((x) => x.persona_id === r.persona_id);
@@ -101,11 +107,39 @@ export function journeyViews(sessionDir: string, runs: RunRecord[], personas: Pe
 }
 
 const ASSETS = fileURLToPath(new URL('./assets/', import.meta.url));
-const asset = (f: string) => readFileSync(join(ASSETS, f));
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+export const asset = (f: string) => readFileSync(join(ASSETS, f));
+export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+export const jsonScript = (v: unknown) =>
+  JSON.stringify(v)
+    .replace(/</g, '\\u003c')
+    .replace(/\u2028|\u2029/g, '');
 
-export function renderReport(a: Analysis, journeys: JourneyView[]): string {
-  const data = {
+/** Data model consumed by report.js (the end-user section). */
+export function usersData(a: Analysis | undefined, journeys: JourneyView[]) {
+  if (!a)
+    return {
+      meta: {
+        session: '',
+        generated: new Date().toISOString(),
+        buyer: '',
+        template: 'saas',
+        seed: 0,
+        variants: [],
+        buyers: 0,
+        segments: 0,
+        formula: ROI_FORMULA,
+        usage: [],
+      },
+      summaries: [],
+      clusters: [],
+      audits: {},
+      backlog: [],
+      backlog_variant: '',
+      resolved: [],
+      journeys: [],
+      messages: MESSAGES,
+    };
+  return {
     meta: {
       session: a.session.session_id,
       generated: a.generated_at,
@@ -141,32 +175,10 @@ export function renderReport(a: Analysis, journeys: JourneyView[]): string {
     journeys,
     messages: MESSAGES,
   };
-  const json = JSON.stringify(data)
-    .replace(/</g, '\\u003c')
-    .replace(/\u2028|\u2029/g, '');
-  const font = asset('fonts/inter-latin-wght.woff2').toString('base64');
-  const css = asset('report.css').toString('utf8');
-  const js = asset('report.js').toString('utf8');
-  const title = a.comparison ? `${a.comparison.baseline} → ${a.comparison.candidate}` : a.variants.join(', ');
-  return `<!doctype html>
-<html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Buyer Arena · ${esc(title)}</title>
-<meta name="description" content="Buyer Arena report: synthetic buyers, real browser journeys, evidence-backed findings.">
-<meta name="color-scheme" content="light dark">
-<style>@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(data:font/woff2;base64,${font}) format('woff2')}
-${css}</style></head>
-<body class="simple">
-<header class="nav" role="banner"><div class="wrap nav-row">
-  <div class="brand"><span class="brand-mark" aria-hidden="true">▲</span>Buyer Arena <small id="tagline"></small></div>
-  <nav class="links" id="links" aria-label="Sections"></nav>
-  <div class="controls">
-    <div class="seg" id="mode" role="group"></div>
-    <div class="seg" id="lang" role="group"></div>
-    <button class="icon-btn" id="themeBtn" type="button"></button>
-    <button class="btn btn-ghost" id="guideBtn" type="button"></button>
-  </div>
-</div><nav class="subnav" id="subnav" aria-label="Sections"></nav></header>
-<main class="wrap">
+}
+
+/** The end-user sections (rendered by report.js). */
+export const USERS_SECTIONS = `
   <section id="overview"><div class="hero" id="hero"></div><div class="kpis" id="kpis"></div></section>
   <section class="simple-only"><div class="sec-head" data-head="plain"><div><h2></h2></div></div><div class="card" id="plain"></div></section>
   <section class="grid-2">
@@ -179,11 +191,47 @@ ${css}</style></head>
     <div class="auds" id="auds"></div><div class="dim" id="consMeta" style="font-size:12.5px;margin:0 0 10px"></div><div class="card" id="consensus"></div></section>
   <section id="journeys"><div class="sec-head" data-head="journeys"><div><h2></h2><p></p></div></div>
     <div class="card jr"><div class="roster"><div class="roster-top"><div class="seg" id="jrFilter" role="group"></div></div><div class="roster-list" id="roster"></div></div><div class="detail" id="detail" aria-live="polite"></div></div></section>
-  <section id="method-sec" class="expert-only"><div class="sec-head" data-head="method"><div><h2></h2></div></div><div class="card pad" id="method"></div></section>
+  <section id="method-sec" class="expert-only"><div class="sec-head" data-head="method"><div><h2></h2></div></div><div class="card pad" id="method"></div></section>`;
+
+export function shell(o: {
+  title: string;
+  main: string;
+  data: unknown;
+  launch?: unknown;
+  extraJs?: string[];
+}): string {
+  const font = asset('fonts/inter-latin-wght.woff2').toString('base64');
+  const css = asset('report.css').toString('utf8') + (o.launch ? asset('launch.css').toString('utf8') : '');
+  const js = [asset('report.js').toString('utf8'), ...(o.extraJs ?? [])];
+  return `<!doctype html>
+<html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Buyer Arena · ${esc(o.title)}</title>
+<meta name="description" content="Buyer Arena report: synthetic participants, real evidence, scored findings.">
+<meta name="color-scheme" content="light dark">
+<style>@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(data:font/woff2;base64,${font}) format('woff2')}
+${css}</style></head>
+<body class="simple${o.launch ? ' launch' : ''}">
+<header class="nav" role="banner"><div class="wrap nav-row">
+  <div class="brand"><span class="brand-mark" aria-hidden="true">▲</span>Buyer Arena <small id="tagline"></small></div>
+  <nav class="links" id="links" aria-label="Sections"></nav>
+  <div class="controls">
+    <div class="seg" id="mode" role="group"></div>
+    <div class="seg" id="lang" role="group"></div>
+    <button class="icon-btn" id="themeBtn" type="button"></button>
+    <button class="btn btn-ghost" id="guideBtn" type="button"></button>
+  </div>
+</div><nav class="subnav" id="subnav" aria-label="Sections"></nav></header>
+<main class="wrap">${o.main}
   <footer id="footer"></footer>
 </main>
 <div class="lightbox" id="lightbox" hidden><img alt=""></div>
-<script id="ba-data" type="application/json">${json}</script>
-<script>${js}</script>
+<script id="ba-data" type="application/json">${jsonScript(o.data)}</script>
+${o.launch ? `<script id="ba-launch" type="application/json">${jsonScript(o.launch)}</script>` : ''}
+${js.map((x) => `<script>${x}</script>`).join('\n')}
 </body></html>`;
+}
+
+export function renderReport(a: Analysis, journeys: JourneyView[]): string {
+  const title = a.comparison ? `${a.comparison.baseline} → ${a.comparison.candidate}` : a.variants.join(', ');
+  return shell({ title, main: USERS_SECTIONS, data: usersData(a, journeys) });
 }

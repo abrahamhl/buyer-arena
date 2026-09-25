@@ -1,0 +1,79 @@
+# Run a launch check from anywhere (GitHub mobile app → Actions → Launch check → Run workflow).
+# Results: stars and scores in the run summary, full report (HTML, PDF, PNG, Markdown, CSV) as an artifact.
+# Hardening: read-only token, inputs passed through env (never interpolated into shell),
+# actions pinned by commit, no secrets used, no paid model calls.
+name: Launch check
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Website to test (empty = bundled demo store)'
+        required: false
+        default: ''
+      mix:
+        description: 'Attention per panel'
+        required: false
+        default: 'users=40,developers=15,investors=15,security=15,segments=15'
+      size:
+        description: 'Synthetic participants (5–200)'
+        required: false
+        default: '40'
+      depth:
+        description: 'Depth'
+        type: choice
+        options: [quick, standard, deep]
+        default: standard
+      execute:
+        description: 'Install, build and run the repository (throw-away clone)'
+        type: boolean
+        default: true
+      lang:
+        description: 'Report language'
+        type: choice
+        options: [es, en, nl]
+        default: es
+permissions:
+  contents: read
+concurrency:
+  group: launch-check
+  cancel-in-progress: true
+jobs:
+  launch-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      BUYER_ARENA_OFFLINE: '1'
+      IN_URL: ${{ inputs.url }}
+      IN_MIX: ${{ inputs.mix }}
+      IN_SIZE: ${{ inputs.size }}
+      IN_DEPTH: ${{ inputs.depth }}
+      IN_EXECUTE: ${{ inputs.execute }}
+      IN_LANG: ${{ inputs.lang }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Launch check
+        run: |
+          args=(--repo . --mix "$IN_MIX" --size "$IN_SIZE" --depth "$IN_DEPTH" --lang "$IN_LANG" --export md,csv,json,pdf,png --root out --no-dashboard --name "${GITHUB_REPOSITORY#*/}")
+          if [ -n "$IN_URL" ]; then args+=(--url "$IN_URL"); else args+=(--demo); fi
+          if [ "$IN_EXECUTE" = "true" ]; then args+=(--execute); fi
+          node dist/cli/main.js launch-check "${args[@]}"
+      - name: Summary
+        if: always()
+        run: |
+          f=$(ls out/launch/*/exports/*.md 2>/dev/null | head -1)
+          if [ -n "$f" ]; then cat "$f" >> "$GITHUB_STEP_SUMMARY"; else echo "No report was produced." >> "$GITHUB_STEP_SUMMARY"; fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: launch-report
+          path: out/launch/
+          retention-days: 14

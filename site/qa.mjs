@@ -1,0 +1,274 @@
+#!/usr/bin/env node
+// Quality gate for site-dist/. Serves it on 127.0.0.1 under SITE_BASE and checks every page
+// at 375 and 1440 px, light and dark. Exit code 1 if any problem is found.
+//   SITE_BASE=/buyer-arena-site/ node scripts/build-site.mjs && node site/qa.mjs [--og]
+// --og also renders site/og.png (1200×630) from the English home page; rebuild afterwards.
+import { createServer } from 'node:http';
+import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, extname, join, normalize, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const DIST = resolve(HERE, '..', 'site-dist');
+const SHOTS = join(HERE, 'qa-shots');
+let base = process.env.SITE_BASE ?? '/buyer-arena-site/';
+if (!base.startsWith('/')) base = '/' + base;
+if (!base.endsWith('/')) base += '/';
+if (/^\/[A-Za-z]:\//.test(base) || base.includes('\\')) {
+  console.error(
+    'SITE_BASE looks like a rewritten Windows path (' + base + '). In Git Bash use MSYS_NO_PATHCONV=1.',
+  );
+  process.exit(1);
+}
+
+if (!existsSync(join(DIST, 'index.html'))) {
+  console.error('site-dist/ is missing: run node scripts/build-site.mjs first');
+  process.exit(1);
+}
+
+const TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.woff2': 'font/woff2',
+  '.txt': 'text/plain; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8',
+};
+
+/** Map a URL path to a file in site-dist (null if missing). */
+function resolveFile(pathname) {
+  if (!pathname.startsWith(base)) return null;
+  let rel = decodeURIComponent(pathname.slice(base.length));
+  let file = normalize(join(DIST, rel));
+  if (!file.startsWith(DIST)) return null;
+  if (existsSync(file) && statSync(file).isDirectory()) file = join(file, 'index.html');
+  return existsSync(file) ? file : null;
+}
+
+const server = createServer((req, res) => {
+  const url = new URL(req.url, 'http://127.0.0.1');
+  const file = resolveFile(url.pathname);
+  if (!file) {
+    // GitHub Pages behaviour: redirect a bare base without slash, else serve 404.html.
+    if (url.pathname + '/' === base) {
+      res.writeHead(301, { location: base });
+      return res.end();
+    }
+    res.writeHead(404, { 'content-type': TYPES['.html'] });
+    return res.end(readFileSync(join(DIST, '404.html')));
+  }
+  res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' });
+  res.end(readFileSync(file));
+});
+await new Promise((r) => server.listen(0, '127.0.0.1', r));
+const PORT = server.address().port;
+const ORIGIN = `http://127.0.0.1:${PORT}`;
+
+const PAGES = [
+  { path: '', lang: 'en', kind: 'index' },
+  ...['es', 'en', 'nl'].flatMap((l) => [
+    { path: `${l}/`, lang: l, kind: 'index' },
+    { path: `${l}/run.html`, lang: l, kind: 'run' },
+  ]),
+  { path: '404.html', lang: 'en', kind: '404' },
+];
+const WIDTHS = [375, 1440];
+const SCHEMES = ['light', 'dark'];
+
+const problems = [];
+const notes = new Set();
+let loads = 0;
+let linksChecked = 0;
+const add = (where, msg) => problems.push(`${where}: ${msg}`);
+
+const browser = await chromium.launch();
+try {
+  for (const scheme of SCHEMES) {
+    for (const width of WIDTHS) {
+      const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: scheme });
+      for (const pg of PAGES) {
+        const where = `/${pg.path || ''} @${width} ${scheme}`;
+        const page = await context.newPage();
+        page.on('console', (m) => {
+          if (m.type() === 'error') add(where, `console error: ${m.text()}`);
+        });
+        page.on('pageerror', (e) => add(where, `page error: ${e.message}`));
+        page.on('request', (r) => {
+          const u = new URL(r.url());
+          if (u.protocol === 'data:' || u.protocol === 'blob:') return;
+          if (u.hostname !== '127.0.0.1') add(where, `third-party request: ${r.url()}`);
+        });
+        page.on('requestfailed', (r) => add(where, `failed request: ${r.url()} (${r.failure()?.errorText})`));
+        page.on('response', (r) => {
+          const expect404 = pg.kind === '404' && r.url() === `${ORIGIN}${base}${pg.path}`;
+          if (r.status() >= 400 && !expect404) add(where, `HTTP ${r.status()}: ${r.url()}`);
+        });
+
+        await page.goto(`${ORIGIN}${base}${pg.path}`, { waitUntil: 'networkidle' });
+        await page.evaluate(() => document.fonts.ready);
+        loads++;
+
+        const r = await page.evaluate(
+          ({ kind, lang }) => {
+            const out = { errs: [], links: [] };
+            const vw = document.documentElement.clientWidth;
+            if (document.documentElement.scrollWidth > vw + 1 || document.body.scrollWidth > vw + 1)
+              out.errs.push(
+                `horizontal overflow: scrollWidth ${document.documentElement.scrollWidth} > ${vw}`,
+              );
+            // Elements sticking out of the viewport that are not inside a scrolling/clipping container.
+            const clipped = (el) => {
+              for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+                const ox = getComputedStyle(p).overflowX;
+                if (ox === 'auto' || ox === 'scroll' || ox === 'hidden') return true;
+              }
+              return false;
+            };
+            const over = [];
+            for (const el of document.body.querySelectorAll('*')) {
+              const b = el.getBoundingClientRect();
+              if (!b.width || getComputedStyle(el).position === 'fixed') continue;
+              if ((b.right > vw + 1 || b.left < -1) && !clipped(el) && !el.closest('.skip, .sr'))
+                over.push(
+                  `${el.tagName.toLowerCase()}.${[...el.classList].join('.')} right=${Math.round(b.right)}`,
+                );
+            }
+            if (over.length) out.errs.push(`elements outside viewport: ${over.slice(0, 4).join(', ')}`);
+
+            const title = document.querySelector('title')?.textContent.trim();
+            if (!title) out.errs.push('missing <title>');
+            const desc = document.querySelector('meta[name="description"]')?.content?.trim();
+            if (!desc) out.errs.push('missing meta description');
+            else if (desc.length > 165) out.errs.push(`meta description too long (${desc.length})`);
+            if (document.documentElement.lang !== lang)
+              out.errs.push(`html lang=${document.documentElement.lang}, expected ${lang}`);
+            if (kind !== '404') {
+              if (!document.querySelector('link[rel="canonical"]')?.href) out.errs.push('missing canonical');
+              for (const h of ['es', 'en', 'nl', 'x-default'])
+                if (!document.querySelector(`link[rel="alternate"][hreflang="${h}"]`))
+                  out.errs.push(`missing hreflang ${h}`);
+            }
+            const h1 = document.querySelectorAll('h1').length;
+            if (h1 !== 1) out.errs.push(`${h1} <h1> elements`);
+            const noAlt = [...document.images].filter((i) => !i.hasAttribute('alt'));
+            if (noAlt.length) out.errs.push(`${noAlt.length} <img> without alt`);
+            for (const s of document.querySelectorAll('script[type="application/ld+json"]')) {
+              try {
+                JSON.parse(s.textContent);
+              } catch {
+                out.errs.push('invalid JSON-LD');
+              }
+            }
+            const ids = new Set([...document.querySelectorAll('[id]')].map((e) => e.id));
+            for (const a of document.querySelectorAll('a[href]')) {
+              const u = new URL(a.href);
+              if (u.origin === location.origin) out.links.push(u.pathname + u.hash);
+              if (
+                a.getAttribute('href').startsWith('#') &&
+                a.getAttribute('href').length > 1 &&
+                !ids.has(a.getAttribute('href').slice(1))
+              )
+                out.errs.push(`broken anchor ${a.getAttribute('href')}`);
+            }
+            // Nav must stay visible after scrolling.
+            window.scrollTo(0, 2000);
+            const nav = document.getElementById('nav');
+            const nb = nav?.getBoundingClientRect();
+            if (!nav || nb.top !== 0 || getComputedStyle(nav).visibility === 'hidden')
+              out.errs.push('nav not visible after scroll');
+            window.scrollTo(0, 0);
+            return out;
+          },
+          { kind: pg.kind, lang: pg.lang },
+        );
+        r.errs.forEach((e) => add(where, e));
+
+        // Internal links: the target file must exist (hash targets on other pages too).
+        if (width === 1440 && scheme === 'light') {
+          for (const l of new Set(r.links)) {
+            linksChecked++;
+            const [p, hash] = l.split('#');
+            const file = resolveFile(p);
+            if (!file) {
+              if (p === `${base}report/`)
+                notes.add(`link ${p} has no target yet (report is placed by another step)`);
+              else add(where, `broken link ${l}`);
+              continue;
+            }
+            if (hash && file.endsWith('.html') && !readFileSync(file, 'utf8').includes(`id="${hash}"`))
+              add(where, `broken anchor ${l}`);
+          }
+        }
+
+        // Run builder: default command must be exact; changing inputs must update it.
+        if (pg.kind === 'run' && width === 1440 && scheme === 'light') {
+          await page.evaluate(() => localStorage.clear());
+          await page.reload({ waitUntil: 'networkidle' });
+          const expected =
+            'npm run ba -- launch-check --repo . --url https://your-site.example --mix users=40,developers=15,investors=15,security=15,segments=15 --size 40 --depth standard';
+          const got = await page.textContent('#cmd');
+          if (got !== expected) add(where, `default command mismatch: ${got}`);
+          await page.check('#execute');
+          await page.fill('#w-security', '0');
+          await page.dispatchEvent('#w-security', 'input');
+          await page.check('input[name="depth"][value="deep"]', { force: true });
+          const got2 = await page.textContent('#cmd');
+          if (
+            !got2.endsWith(
+              '--mix users=40,developers=15,investors=15,security=0,segments=15 --size 40 --depth deep --execute',
+            )
+          )
+            add(where, `command did not update: ${got2}`);
+          const users = await page.textContent('#n-users');
+          if (users !== '38' && users !== String(Math.round(40 * 0.47 * 2)))
+            add(where, `unexpected users participants: ${users}`);
+          await page.click('#reset');
+          await page.evaluate(() => localStorage.clear());
+        }
+
+        await page.evaluate(() => window.scrollTo(0, 0));
+        if (scheme === 'light') {
+          mkdirSync(SHOTS, { recursive: true });
+          if (pg.path === 'es/' && width === 1440)
+            await page.screenshot({ path: join(SHOTS, 'es-1440.png'), fullPage: true });
+          if (pg.path === 'en/run.html' && width === 1440)
+            await page.screenshot({ path: join(SHOTS, 'en-run-1440.png'), fullPage: true });
+          if (pg.path === 'nl/' && width === 375)
+            await page.screenshot({ path: join(SHOTS, 'nl-375.png'), fullPage: true });
+        }
+        if (scheme === 'dark' && pg.path === 'en/' && width === 1440)
+          await page.screenshot({ path: join(SHOTS, 'en-1440-dark.png') });
+        await page.close();
+      }
+      await context.close();
+    }
+  }
+
+  if (process.argv.includes('--og')) {
+    const ctx = await browser.newContext({ viewport: { width: 1200, height: 630 }, colorScheme: 'light' });
+    const page = await ctx.newPage();
+    await page.goto(`${ORIGIN}${base}en/`, { waitUntil: 'networkidle' });
+    await page.evaluate(() => document.fonts.ready);
+    await page.screenshot({ path: join(HERE, 'og.png') });
+    await ctx.close();
+    console.log('wrote site/og.png — rebuild to include it');
+  }
+} finally {
+  await browser.close();
+  server.close();
+}
+
+const uniq = [...new Set(problems)];
+console.log(
+  `QA: ${PAGES.length} pages × ${WIDTHS.length} widths × ${SCHEMES.length} themes = ${loads} loads, ${linksChecked} internal links checked`,
+);
+for (const n of notes) console.log(`note: ${n}`);
+if (uniq.length) {
+  console.log(`${uniq.length} problems:`);
+  uniq.forEach((p) => console.log(' - ' + p));
+  process.exit(1);
+}
+console.log('0 problems');

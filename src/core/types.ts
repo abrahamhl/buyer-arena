@@ -223,6 +223,33 @@ export const RunRecordSchema = z.object({
   milestones: z.record(z.string(), z.number()),
   events: z.array(JourneyEventSchema),
   trace_path: z.string().optional(),
+  /** Light accessibility signals, one entry per distinct page visited. */
+  page_checks: z
+    .array(
+      z.object({
+        url: z.string(),
+        lang: z.string(),
+        load_ms: z.number().nullable(),
+        unlabeled_inputs: z.number(),
+        images_without_alt: z.number(),
+        unnamed_controls: z.number(),
+        small_targets: z.number(),
+        low_contrast: z.number(),
+        interactive: z.number(),
+        samples: z.array(z.object({ kind: z.string(), text: z.string() })),
+      }),
+    )
+    .optional(),
+  /** Privacy evidence: cookies set and third-party hosts the pages tried to call (never loaded). */
+  privacy: z
+    .object({
+      cookies: z.number(),
+      cookie_names: z.array(z.string()),
+      insecure_cookies: z.number(),
+      third_party_hosts: z.array(z.string()),
+    })
+    .optional(),
+  network: z.string().optional(),
   usage: UsageSchema.optional(),
 });
 export type RunRecord = z.infer<typeof RunRecordSchema>;

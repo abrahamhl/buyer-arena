@@ -50,6 +50,8 @@
   const K = C ? C.candidate : V[0];
   const sum = (v) => D.summaries.find((s) => s.variant === v);
   const J = D.journeys;
+  const HAS_USERS = D.summaries.length > 0;
+  const LAUNCH = document.body.classList.contains('launch');
   const segArch = {};
   J.forEach((j) => (segArch[j.segment] = j.archetype));
 
@@ -178,8 +180,11 @@
           `<a href="#${id}" class="${id === 'auditors' || id === 'method' ? 'expert-only' : ''}">${esc(t(k))}</a>`,
       )
       .join('');
-    $('#links').innerHTML = links;
-    $('#subnav').innerHTML = links;
+    // Launch reports replace these section links with panel tabs (launch.js).
+    if (!LAUNCH) {
+      $('#links').innerHTML = links;
+      $('#subnav').innerHTML = links;
+    }
     $('#tagline').textContent = t('app.tagline');
     $('#lang').innerHTML = LANGS.map(
       (l) =>
@@ -656,7 +661,8 @@
   }
 
   /* ───────── guide (in-app tour) ───────── */
-  const TOUR = [
+  let tourKey = 'guide';
+  let TOUR = [
     ['#hero h1', 'guide.1'],
     ['#mode', 'guide.2'],
     ['#friction', 'guide.3'],
@@ -673,7 +679,7 @@
       hole?.remove();
       card?.remove();
       tourI = -1;
-      store.set('guide', 'seen');
+      store.set(tourKey, 'seen');
       return;
     }
     if (!hole) {
@@ -728,16 +734,20 @@
     document.body.classList.toggle('simple', state.mode === 'simple');
     renderNav();
     renderHeads();
-    renderHero();
-    renderPlain();
-    renderKpis();
-    renderFunnel();
-    renderFriction();
-    renderBacklog();
-    renderAuditors();
-    renderRoster();
-    renderDetail();
-    renderMethod();
+    // In a launch report the end-user panel may not have run: its sections stay empty.
+    if (HAS_USERS) {
+      renderHero();
+      renderPlain();
+      renderKpis();
+      renderFunnel();
+      renderFriction();
+      renderBacklog();
+      renderAuditors();
+      renderRoster();
+      renderDetail();
+      renderMethod();
+    }
+    BA.hooks.forEach((f) => f());
     if (tourI >= 0) tour(tourI);
   }
 
@@ -799,6 +809,23 @@
   addEventListener('resize', () => tourI >= 0 && tour(tourI));
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
 
+  /** Small API for the launch-readiness tabs (launch.js), which reuse these helpers. */
+  const BA = (window.BA = {
+    t,
+    tx,
+    esc,
+    icon,
+    avatar,
+    state,
+    LOCALE,
+    hooks: [],
+    render: () => render(),
+    setTour(steps) {
+      TOUR = steps;
+      tourKey = 'guide-launch';
+    },
+  });
+
   applyTheme();
   const top = D.backlog[0] && D.backlog[0].evidence_ids[0];
   const first =
@@ -808,5 +835,7 @@
   state.run = first ? first.run_id : null;
   render();
   window.scrollTo(0, 0);
-  if (!store.get('guide') && !/[?&]noguide/.test(location.search)) setTimeout(() => tour(0), 600);
+  setTimeout(() => {
+    if (!store.get(tourKey) && !/[?&]noguide/.test(location.search)) tour(0);
+  }, 600);
 })();

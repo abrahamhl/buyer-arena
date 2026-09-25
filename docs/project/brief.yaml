@@ -1,0 +1,232 @@
+# Buyer Arena — commitments from the founding brief (2026-09-24) and the launch-readiness brief (2026-09-25).
+# Each item is verified automatically by probes (file | script | grep). Used by `launch-check` ("promised vs built").
+title: Buyer Arena founding brief
+source: founder's specification, sections 1–36, plus the launch-readiness request
+items:
+  - id: install
+    area: core
+    text:
+      es: 'El repositorio se instala'
+      en: 'The repository installs'
+      nl: 'De repository installeert'
+    probes: [{ file: '^package-lock\.json$' }, { script: prepare }]
+  - id: demo
+    area: core
+    text:
+      es: 'La demo arranca con un comando'
+      en: 'The demo launches with one command'
+      nl: 'De demo start met één commando'
+    probes: [{ script: demo }]
+  - id: twenty_buyers
+    area: users
+    text:
+      es: '20 compradores sintéticos pueden ejecutarse'
+      en: '20 synthetic buyers can run'
+      nl: '20 synthetische kopers kunnen draaien'
+    probes: [{ grep: "size: o\\.size \\?\\? 20", in: '^src/workflow\.ts$' }]
+  - id: archetypes
+    area: users
+    text:
+      es: 'Existen 5 arquetipos'
+      en: '5 archetypes exist'
+      nl: 'Er bestaan 5 archetypen'
+    probes:
+      [
+        { grep: "'mobile-rushed'", in: '^src/personas/templates\.ts$' },
+        { grep: 'skeptic:', in: '^src/personas/templates\.ts$' },
+      ]
+  - id: stories
+    area: users
+    text:
+      es: 'Existen historias de cliente'
+      en: 'Customer stories exist'
+      nl: 'Klantverhalen bestaan'
+    probes: [{ file: '^src/stories/story\.ts$' }]
+  - id: journeys
+    area: users
+    text:
+      es: 'Se capturan recorridos reales de navegador'
+      en: 'Browser journeys are captured'
+      nl: 'Browserreizen worden vastgelegd'
+    probes:
+      [
+        { file: '^src/simulator/journey\.ts$' },
+        { grep: "tracing\\.start", in: '^src/simulator/journey\.ts$' },
+      ]
+  - id: evidence
+    area: core
+    text:
+      es: 'La evidencia se guarda y cada hallazgo la cita'
+      en: 'Evidence is persisted and findings cite it'
+      nl: 'Bewijs wordt bewaard en bevindingen verwijzen ernaar'
+    probes: [{ grep: 'validateFindings', in: '^src/auditors/consensus\.ts$' }]
+  - id: compare
+    area: users
+    text:
+      es: 'Funciona la comparación actual vs candidata'
+      en: 'Baseline vs candidate works'
+      nl: 'Huidige versie vs kandidaat werkt'
+    probes: [{ file: '^src/comparison/compare\.ts$' }]
+  - id: auditors
+    area: core
+    text:
+      es: 'Análisis de cinco auditores'
+      en: 'Five-auditor analysis'
+      nl: 'Analyse door vijf auditors'
+    probes: [{ grep: 'REDTEAM_AUDITOR', in: '^src/auditors/rules\.ts$' }]
+  - id: roi
+    area: core
+    text:
+      es: 'Se genera ROI_BACKLOG.md'
+      en: 'ROI_BACKLOG.md is generated'
+      nl: 'ROI_BACKLOG.md wordt gegenereerd'
+    probes: [{ file: '^examples/demo-output/ROI_BACKLOG\.md$' }]
+  - id: report
+    area: core
+    text:
+      es: 'Funciona el informe HTML'
+      en: 'The HTML report works'
+      nl: 'Het HTML-rapport werkt'
+    probes: [{ file: '^src/reports/html\.ts$' }]
+  - id: replay
+    area: core
+    text:
+      es: 'Reproducción y trazas inspeccionables'
+      en: 'Replay and trace inspection work'
+      nl: 'Terugkijken en traces werken'
+    probes: [{ grep: "command\\('replay'\\)", in: '^src/cli/main\.ts$' }]
+  - id: mcp
+    area: agents
+    text:
+      es: 'Servidor MCP funcional'
+      en: 'A working MCP server'
+      nl: 'Een werkende MCP-server'
+    probes: [{ file: '^src/mcp/server\.ts$' }, { file: '^tests/integration/cli-mcp\.test\.ts$' }]
+  - id: no_paid_tests
+    area: safety
+    text:
+      es: 'Tests y demo sin API de pago'
+      en: 'No paid API for tests or demo'
+      nl: 'Geen betaalde API voor tests of demo'
+    probes: [{ grep: "BUYER_ARENA_OFFLINE: '1'", in: '^vitest\.config\.ts$' }]
+  - id: providers
+    area: agents
+    text:
+      es: 'Existe adaptador para proveedores LLM externos'
+      en: 'External LLM provider adapter exists'
+      nl: 'Adapter voor externe LLM-providers bestaat'
+    probes: [{ file: '^src/providers/anthropic\.ts$' }, { file: '^src/providers/openai-compatible\.ts$' }]
+  - id: budgets
+    area: safety
+    text:
+      es: 'Los presupuestos se hacen cumplir'
+      en: 'Budgets are enforced'
+      nl: 'Budgetten worden afgedwongen'
+    probes: [{ grep: "reserve\\(provider", in: '^src/providers/metered\.ts$' }]
+  - id: resume
+    area: core
+    text:
+      es: 'Una interrupción se puede reanudar'
+      en: 'Interruption can resume'
+      nl: 'Onderbreking kan worden hervat'
+    probes: [{ grep: 'resumes after interruption', in: '^tests/' }]
+  - id: ci
+    area: oss
+    text:
+      es: 'Existe integración continua'
+      en: 'CI exists'
+      nl: 'CI bestaat'
+    probes: [{ file: '^\.github/workflows/ci\.yml$' }]
+  - id: secrets
+    area: safety
+    text:
+      es: 'Los secretos están protegidos'
+      en: 'Secrets are protected'
+      nl: 'Geheimen zijn beschermd'
+    probes:
+      [{ file: '^scripts/secret-scan\.mjs$' }, { grep: 'function redact', in: '^src/providers/http\.ts$' }]
+  - id: oss_docs
+    area: oss
+    text:
+      es: 'El proyecto parece creíble en GitHub'
+      en: 'The project looks credible on GitHub'
+      nl: 'Het project oogt geloofwaardig op GitHub'
+    probes: [{ file: '^CONTRIBUTING\.md$' }, { file: '^SECURITY\.md$' }, { file: '^LICENSE_STRATEGY\.md$' }]
+  - id: five_panels
+    area: launch
+    text:
+      es: 'Cinco paneles (usuario, desarrollador, inversor, red team, segmentos)'
+      en: 'Five panels (user, developer, investor, red team, segments)'
+      nl: 'Vijf panels (gebruiker, ontwikkelaar, investeerder, red team, segmenten)'
+    probes:
+      [
+        { file: '^src/panels/developers\.ts$' },
+        { file: '^src/panels/investors\.ts$' },
+        { file: '^src/panels/security\.ts$' },
+        { file: '^src/panels/segments\.ts$' },
+      ]
+  - id: stars_scores
+    area: launch
+    text:
+      es: 'Todo puntuado con estrellas 0–5 y 0–100 %'
+      en: 'Everything scored with 0–5 stars and 0–100%'
+      nl: 'Alles gescoord met 0–5 sterren en 0–100%'
+    probes: [{ grep: 'export const stars', in: '^src/panels/types\.ts$' }]
+  - id: exports
+    area: launch
+    text:
+      es: 'Exportación CSV, PNG, JPG, Markdown, JSON y PDF'
+      en: 'CSV, PNG, JPG, Markdown, JSON and PDF export'
+      nl: 'Export naar CSV, PNG, JPG, Markdown, JSON en PDF'
+    probes:
+      [
+        { grep: 'image/jpeg', in: '^src/reports/assets/' },
+        { grep: 'text/csv', in: '^src/reports/assets/' },
+        { grep: "command\\('export'\\)", in: '^src/cli/main\.ts$' },
+      ]
+  - id: languages
+    area: launch
+    text:
+      es: 'Interfaz en ES · EN · NL de verdad'
+      en: 'Real ES · EN · NL interface'
+      nl: 'Echte ES · EN · NL-interface'
+    probes: [{ file: '^tests/unit/i18n\.test\.ts$' }]
+  - id: mix_ui
+    area: launch
+    text:
+      es: 'Mezcla configurable por panel con progreso en vivo'
+      en: 'Configurable panel mix with live progress'
+      nl: 'Instelbare panelmix met live voortgang'
+    probes: [{ file: '^src/panels/mix\.ts$' }, { file: '^src/studio/server\.ts$' }]
+  - id: agent_security
+    area: safety
+    text:
+      es: 'Auditoría de la superficie de agentes IA (skills, MCP, prompt injection)'
+      en: 'AI-agent surface audit (skills, MCP, prompt injection)'
+      nl: 'Audit van het AI-agentoppervlak (skills, MCP, prompt injection)'
+    probes:
+      [
+        { grep: 'HIDDEN_UNICODE', in: '^src/panels/security\.ts$' },
+        { grep: "sec\\.mcp", in: '^src/panels/security\.ts$' },
+      ]
+  - id: argus
+    area: launch
+    text:
+      es: 'Conexión con Argus'
+      en: 'Argus integration'
+      nl: 'Integratie met Argus'
+    probes: [{ file: '^src/panels/argus\.ts$' }]
+  - id: website
+    area: launch
+    text:
+      es: 'Web oficial ES/EN/NL'
+      en: 'Official ES/EN/NL website'
+      nl: 'Officiële ES/EN/NL-website'
+    probes: [{ file: '^scripts/build-site\.mjs$' }]
+  - id: mobile
+    area: launch
+    text:
+      es: 'Ejecutable desde el móvil vía GitHub Actions'
+      en: 'Runnable from a phone via GitHub Actions'
+      nl: 'Uitvoerbaar vanaf een telefoon via GitHub Actions'
+    probes: [{ file: '^\.github/workflows/launch-check\.yml$' }]

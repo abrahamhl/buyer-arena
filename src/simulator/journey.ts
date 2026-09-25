@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import type { Browser, BrowserContext, Page } from 'playwright';
+import { checkPage, type PageCheck } from '../browser/a11y.js';
 import { observe, type ElementInfo, type Observation } from '../browser/observe.js';
 import { BudgetExceededError, ProviderError } from '../core/errors.js';
 import { ensureDir } from '../core/fs.js';
@@ -46,6 +47,8 @@ export interface JourneyOptions {
   /** Returns usage accumulated for this run by an LLM policy (if any). */
   usage?: () => Usage | undefined;
   signal?: AbortSignal;
+  /** Network emulation for segment runs (e.g. slow mobile connection). */
+  network?: 'slow3g';
 }
 
 class Recorder {
@@ -90,6 +93,7 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
   let tracePath: string | undefined;
   let currentUrl = o.brief.start_url;
   let lastAlerts = '';
+  let privacy: RunRecord['privacy'];
 
   const mark = (m: Milestone, url: string, detail?: string) => {
     if (milestones[m] !== undefined) return;
@@ -109,12 +113,21 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
   // start URL itself redirects to, e.g. http→https or apex→www).
   const allowed = new Set([startOrigin]);
   let lastAllowedUrl = o.brief.start_url;
+  const thirdParty = new Set<string>();
+  const pageChecks: PageCheck[] = [];
+  const checkedPaths = new Set<string>();
   let offsite: string | undefined;
   let offsiteCount = 0;
   await context.route('**/*', (route) => {
     const u = route.request().url();
     if (u.startsWith('data:') || u.startsWith('blob:') || allowed.has(new URL(u).origin))
       return route.continue();
+    // Record (never load) every third-party host the page tries to call: privacy evidence.
+    try {
+      thirdParty.add(new URL(u).host);
+    } catch {
+      /* ignore */
+    }
     if (route.request().isNavigationRequest())
       rec.add('blocked_offsite', currentUrl, { detail: new URL(u).origin });
     return route.abort('blockedbyclient');
@@ -122,6 +135,16 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
   if (o.trace !== 'off') await context.tracing.start({ screenshots: true, snapshots: true, title: o.runId });
   const page: Page = await context.newPage();
   page.setDefaultTimeout(5_000);
+  if (o.network === 'slow3g') {
+    // Chrome DevTools "Slow 3G"-like profile. Throttling adds waiting, not CPU load.
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Network.emulateNetworkConditions', {
+      offline: false,
+      latency: 400,
+      downloadThroughput: (400 * 1024) / 8,
+      uploadThroughput: (400 * 1024) / 8,
+    });
+  }
   // Pop-ups / new tabs are never followed.
   context.on('page', (p) => {
     if (p === page) return;
@@ -231,6 +254,12 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
       const outcome = await Promise.race([
         (async (): Promise<'continue' | 'break'> => {
           const obs = await observe(page);
+          const p = pathOf(obs.url).split('?')[0] ?? '';
+          if (!checkedPaths.has(p)) {
+            checkedPaths.add(p);
+            const pc = await checkPage(page);
+            if (pc) pageChecks.push(pc);
+          }
           const screenshot = await shot();
           const blocks = seenBlocks(obs, memory);
           const pageText = obs.blocks.map((b) => b.text).join('\n');
@@ -360,6 +389,13 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
         .stop(keepTrace ? { path: join(o.outDir, 'trace.zip') } : undefined)
         .catch(() => undefined);
     }
+    const cookies = await context.cookies().catch(() => []);
+    privacy = {
+      cookies: cookies.length,
+      cookie_names: cookies.map((c) => c.name).slice(0, 20),
+      insecure_cookies: cookies.filter((c) => !c.secure || !c.httpOnly).length,
+      third_party_hosts: [...thirdParty].slice(0, 50),
+    };
     await context.close().catch(() => undefined);
   }
 
@@ -386,6 +422,9 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
     events: rec.events,
     trace_path: tracePath,
     usage,
+    page_checks: pageChecks,
+    privacy,
+    network: o.network,
   };
 }
 

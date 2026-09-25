@@ -44,6 +44,8 @@ export interface SessionOptions {
    * instead of the built-in Playwright runner. See src/engines/external.ts for the contract.
    */
   engineCommand?: string;
+  /** Network emulation for every journey in this session (segment runs). */
+  network?: 'slow3g';
   /** Allow resuming with different variant URLs (e.g. demo stores on new ephemeral ports). */
   allowTargetChange?: boolean;
   /** Extra terms that must never reach a buyer (hypotheses, change descriptions…). */
@@ -298,6 +300,7 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
             screenshots: o.screenshots ?? true,
             usage: () => runUsage,
             signal: internal.signal,
+            network: o.network,
           }),
         );
         if (run.status === 'budget_exhausted') budgetHit = true;

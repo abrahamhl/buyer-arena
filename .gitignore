@@ -9,3 +9,6 @@ coverage/
 test-results/
 .buyer-arena-dev/
 .tmp/
+site-dist/
+site/qa-shots/
+out/

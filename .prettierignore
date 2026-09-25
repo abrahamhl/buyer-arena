@@ -3,3 +3,7 @@ node_modules
 .buyer-arena
 examples/demo-output
 package-lock.json
+site-dist
+site/qa-shots
+out
+.tmp
