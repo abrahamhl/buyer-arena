@@ -155,7 +155,10 @@ function langSwitch(ctx, page, id) {
     const on = l === cur;
     return `<a class="lb" href="${ctx.base}${pagePath(l, page)}" hreflang="${l}" lang="${l}"${on ? ' aria-current="page"' : ''} aria-label="${content[l].label}">${l.toUpperCase()}</a>`;
   }).join('');
-  return `<nav class="seg lang" ${id ? `id="${id}" ` : ''}aria-label="${esc(c.nav.langLabel)}">${links}</nav>`;
+  // Header: a navigation landmark. Footer: a plain group, so landmarks stay unique.
+  return id
+    ? `<nav class="seg lang" id="${id}" aria-label="${esc(c.nav.langLabel)}">${links}</nav>`
+    : `<div class="seg lang" role="group" aria-label="${esc(c.nav.langLabel)}">${links}</div>`;
 }
 
 function nav(ctx, page) {
@@ -184,7 +187,7 @@ function nav(ctx, page) {
       <a class="btn btn-primary run-btn" href="${runHref}"${runOn}>${esc(c.nav.run)}</a>
     </div>
   </div>
-  <nav class="subnav" aria-label="${esc(c.nav.sections)} (2)">
+  <nav class="subnav" aria-label="${esc(c.nav.sections)}">
     <a class="sub-run" href="${runHref}"${runOn}>${esc(c.nav.run)}</a>${links}
   </nav>
 </header>`;
@@ -211,7 +214,7 @@ function footer(ctx, page) {
   return `<footer class="foot">
   <div class="wrap foot-grid">
     <div>
-      <a class="brand" href="${ctx.base}${pagePath(ctx.lang, 'index')}"><span class="brand-mark" aria-hidden="true">▲</span><span class="brand-word">BUYER ARENA</span></a>
+      <a class="brand" href="${ctx.base}${pagePath(ctx.lang, 'index')}" aria-label="Buyer Arena — ${esc(c.nav.home)}"><span class="brand-mark" aria-hidden="true">▲</span><span class="brand-word">BUYER ARENA</span></a>
       <p class="muted foot-tag">${esc(c.footer.tagline)}</p>
       <p class="foot-state"><span class="state-dot" aria-hidden="true"></span>${esc(isPublic(ctx) ? c.state.public : c.state.prelaunch)}</p>
       <p class="foot-privacy-wrap"><a class="pill good foot-privacy" href="${ctx.base}${lang}/#safety" rel="privacy-policy"><span class="dot" aria-hidden="true"></span>${esc(c.footer.privacy)}</a></p>
