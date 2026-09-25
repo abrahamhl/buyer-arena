@@ -26,12 +26,9 @@ scripted model) + Stagehand reference · reusable PR workflow + comment example 
 EVIDENCE_PROTOCOL, INTEGRATIONS (license matrix), ARCHITECTURE, METHODOLOGY, CHANGELOG ·
 version 0.2.0-rc.1 (not published). Suite: 164 passed, 1 opt-in skipped.
 
-## Remaining
+## Status
 
-1. Site redesign (delegated specialist; files: site/**, scripts/build-site.mjs) → review, commit,
-   branch + draft PR in abrahamhl/buyer-arena-site (do NOT push to its main: that publishes).
-2. Dogfood: self-audit of buyer-arena and buyer-arena-site, npm audit, pack dry run.
-3. `docs/project/RC_FINAL_REPORT.md`, refresh NEXT/OPEN_LOOPS/PROJECT_STATE.
+RC complete. Site redesign committed; site build on abrahamhl/buyer-arena-site#1 (draft, not merged). Self-audits in `docs/project/self-audit/`. Final summary: `RC_FINAL_REPORT.md`. Suite 166 passed + 1 opt-in.
 
 ## Decisions
 
