@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "status": "success",
+  "eval": {
+    "eval_id": "e1",
+    "run_id": "r1",
+    "created": "2026-09-25T10:00:00+00:00",
+    "task": "buyer_task",
+    "model": "openai/gpt-4.1-mini",
+    "dataset": { "name": "d", "samples": 10 }
+  },
+  "results": {
+    "total_samples": 10,
+    "completed_samples": 10,
+    "scores": [
+      {
+        "name": "match",
+        "scorer": "match",
+        "metrics": {
+          "accuracy": { "name": "accuracy", "value": 0.8, "params": {} },
+          "stderr": { "name": "stderr", "value": 0.13, "params": {} }
+        }
+      }
+    ]
+  },
+  "stats": {
+    "started_at": "2026-09-25T10:00:00+00:00",
+    "completed_at": "2026-09-25T10:01:10+00:00",
+    "model_usage": {
+      "openai/gpt-4.1-mini": { "input_tokens": 5000, "output_tokens": 700, "total_tokens": 5700 }
+    }
+  }
+}

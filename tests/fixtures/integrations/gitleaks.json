@@ -1,0 +1,42 @@
+[
+  {
+    "RuleID": "test-rule",
+    "Description": "",
+    "StartLine": 1,
+    "EndLine": 2,
+    "StartColumn": 1,
+    "EndColumn": 2,
+    "Match": "line containing FAKE-SECRET-VALUE-123456",
+    "Secret": "FAKE-SECRET-VALUE-123456",
+    "File": "auth.py",
+    "SymlinkFile": "",
+    "Commit": "0000000000000000",
+    "Entropy": 0,
+    "Author": "John Doe",
+    "Email": "johndoe@gmail.com",
+    "Date": "10-19-2003",
+    "Message": "opps",
+    "Tags": [],
+    "Fingerprint": ""
+  },
+  {
+    "RuleID": "generic-api-key",
+    "Description": "Generic API Key",
+    "StartLine": 7,
+    "EndLine": 7,
+    "StartColumn": 3,
+    "EndColumn": 40,
+    "Match": "api_key = REDACTED",
+    "Secret": "REDACTED",
+    "File": "config/settings.py",
+    "SymlinkFile": "",
+    "Commit": "",
+    "Entropy": 4.1,
+    "Author": "",
+    "Email": "",
+    "Date": "",
+    "Message": "",
+    "Tags": ["key"],
+    "Fingerprint": "config/settings.py:generic-api-key:7"
+  }
+]
