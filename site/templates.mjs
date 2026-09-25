@@ -317,7 +317,7 @@ function heroScene(c) {
     })
     .join('');
   return `<figure class="scene card" id="scene">
-  <svg class="hs" viewBox="0 0 480 420" role="img" aria-label="${esc(c.hero.sceneLabel)}" focusable="false">
+  <svg class="hs" viewBox="0 0 480 424" role="img" aria-label="${esc(c.hero.sceneLabel)}" focusable="false">
     <g aria-hidden="true">
       <text class="hs-k" x="0" y="12">${esc(s.baseline)}</text>
       <text class="hs-v" x="0" y="40" data-k="b">${F.baseline}%</text>
@@ -467,8 +467,8 @@ ${nav(ctx, 'index')}
 <main class="wrap" id="main">
   <section class="hero" id="top" aria-labelledby="h-hero">
     <div class="hero-copy">
-      <p class="state-pill ${pub ? 'is-public' : ''}"><span class="state-dot" aria-hidden="true"></span>${esc(pub ? c.state.public : c.state.prelaunch)}${ctx.version ? ` <span class="mono state-v">v${esc(ctx.version)}</span>` : ''}</p>
-      <h1 id="h-hero"><span class="h1-brand"><span aria-hidden="true">▲ </span>BUYER ARENA</span> ${h.title}</h1>
+      <p class="state-pill ${pub ? 'is-public' : ''}"><span class="state-dot" aria-hidden="true"></span>${esc(pub ? c.state.public : c.state.prelaunch)}</p>
+      <h1 id="h-hero"><span class="h1-brand"><span aria-hidden="true">▲ </span>BUYER ARENA${ctx.version ? `<span class="state-v"> · v${esc(ctx.version)}</span>` : ''}</span> ${h.title}</h1>
       <p class="sub">${esc(h.sub)}</p>
       <div class="ctas">
         <a class="btn btn-primary btn-lg" href="#quickstart">${esc(h.cta1)}</a>

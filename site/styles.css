@@ -451,11 +451,10 @@ section {
 .state-pill {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
   margin: 0 0 22px;
   padding: 6px 12px;
-  border-radius: 999px;
+  border-radius: 12px;
   border: 1px solid var(--line-2);
   background: var(--surface);
   color: var(--text);
@@ -474,8 +473,8 @@ section {
   background: var(--good);
 }
 .state-v {
-  color: var(--text-2);
-  font-size: 12px;
+  letter-spacing: 0.02em;
+  font-weight: 500;
 }
 
 /* ───────── hero ───────── */
@@ -1058,6 +1057,7 @@ section {
   align-items: start;
 }
 .ig-group {
+  margin: 0;
   padding: 18px 20px 10px;
   min-width: 0;
 }
