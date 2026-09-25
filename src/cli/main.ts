@@ -4,11 +4,13 @@ import { join, relative, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { Command, Option } from 'commander';
 import { chromiumExecutable } from '../core/browser.js';
-import { enterNetworkScope, NetworkLedger, resolvePolicy } from '../policy/network.js';
+import { printModelDoctor, registerIntegrationCommands, registerRcCommands } from './commands.js';
+import { currentLedger, enterNetworkScope, NetworkLedger, resolvePolicy } from '../policy/network.js';
 import YAML from 'yaml';
 import { analyzeSession } from '../analysis.js';
 import { loadConfig } from '../config.js';
 import { calibrate, calibrationError, CalibrationInputSchema } from '../calibration/calibration.js';
+import { assessCalibration } from '../calibration/metrics.js';
 import { readJson, readStructured, writeFileAtomic } from '../core/fs.js';
 import { c, log } from '../core/log.js';
 import { TaskSchema, type Population, type RunRecord, type Task } from '../core/types.js';
@@ -437,12 +439,56 @@ program
       log(
         `  ${r.stage.padEnd(18)}${`${Math.round(r.simulated * 100)}%`.padStart(10)}${`${Math.round(r.real * 100)}%`.padStart(8)}${`${Math.round(r.abs_error * 100)}pp`.padStart(9)}${(r.correction === null ? '—' : r.correction.toFixed(2)).padStart(10)}`,
       );
+    const variantNames = a.summaries.map((x) => x.variant);
+    const vd = input.variant_delta;
+    const rate = (v: string) => a.summaries.find((x) => x.variant === v)?.completion.rate;
+    const simDelta =
+      vd && rate(vd.baseline) !== undefined && rate(vd.candidate) !== undefined
+        ? ((rate(vd.candidate) as number) - (rate(vd.baseline) as number)) * 100
+        : null;
+    const predicted = [...new Set(Object.values(a.audits).flatMap((x) => x.consensus.map((i) => i.topic)))];
+    const pairs = err.rows.map((r) => ({
+      stage: r.stage,
+      p: r.simulated,
+      r: r.real,
+      n: input.funnel?.find((x) => x.stage === r.stage)?.n,
+    }));
+    const assessment = assessCalibration(input, pairs, {
+      simulatedDeltaPp: simDelta,
+      predictedTopics: predicted,
+    });
+    const m = assessment.metrics;
+    const pp = (x: number | null) => (x === null ? '—' : `${(x * 100).toFixed(1)}pp`);
+    const n3 = (x: number | null) => (x === null ? '—' : x.toFixed(3));
     log(
-      `\n  mean absolute error ${err.mean_abs_error === null ? '—' : `${Math.round(err.mean_abs_error * 100)}pp`} ${c.dim(`(source: ${input.source})`)}`,
+      `\n  MAE ${pp(m.mae)} · RMSE ${pp(m.rmse)} · Brier ${n3(m.brier)} (reference ${n3(m.brier_reference)}) · ECE ${pp(m.ece)}`,
+    );
+    if (m.directional_agreement !== null)
+      log(
+        `  A/B direction: simulated ${m.simulated_delta_pp?.toFixed(1)}pp vs real ${m.real_delta_pp}pp → ${m.directional_agreement ? c.green('agrees') : c.red('disagrees')}`,
+      );
+    if (m.finding_labels)
+      log(
+        `  labelled findings: FPR ${pp(m.finding_labels.fpr)} · FNR ${pp(m.finding_labels.fnr)} (tp ${m.finding_labels.tp}, fp ${m.finding_labels.fp}, fn ${m.finding_labels.fn}, tn ${m.finding_labels.tn})`,
+      );
+    const col =
+      assessment.state === 'CALIBRATED'
+        ? c.green
+        : assessment.state === 'PARTIALLY_CALIBRATED'
+          ? c.yellow
+          : c.red;
+    log(
+      `\n  state ${col(assessment.state)} ${c.dim(`(source: ${input.source}; evidence: ${input.evidence_kind}; variants: ${variantNames.join(', ')})`)}`,
+    );
+    for (const r of assessment.reasons) log(c.dim(`    · ${r}`));
+    const outFile = join(a.session.session_id ? resolveSession(f.session, f.root) : '.', 'calibration.json');
+    writeFileAtomic(
+      outFile,
+      JSON.stringify({ version: 1, input_source: input.source, rows: err.rows, ...assessment }, null, 2),
     );
     log(
       c.dim(
-        '  Correction factors are metadata for future calibration, not adjustments applied to results.\n',
+        `  Correction factors are metadata for future calibration, not adjustments applied to results. Saved ${relative(process.cwd(), outFile)}\n`,
       ),
     );
   });
@@ -582,7 +628,11 @@ program
   .command('doctor')
   .description('Check the environment (no network calls, no spend)')
   .option('--root <dir>', 'sessions directory', DEFAULT_ROOT)
-  .action((f: { root: string }) => {
+  .option(
+    '--models',
+    'also probe LOCAL model endpoints (LM Studio, Ollama, OpenAI-compatible); cloud is never contacted',
+  )
+  .action(async (f: { root: string; models?: boolean }) => {
     const ok = (b: boolean) => (b ? c.green('✓') : c.red('✗'));
     const [maj, min] = process.versions.node.split('.').map(Number) as [number, number];
     const nodeOk = maj > 22 || (maj === 22 && min >= 12);
@@ -599,8 +649,9 @@ program
       writable = false;
     }
     log(`  ${ok(writable)} writable working directory ${c.dim(resolve(f.root))}`);
+    const net = currentLedger().policy;
     log(
-      `  ${c.green('✓')} offline mode ${process.env.BUYER_ARENA_OFFLINE === '1' ? 'ON (paid providers refused)' : c.dim('off')}`,
+      `  ${c.green('✓')} network policy ${net.mode.toUpperCase()} ${c.dim(net.strict ? `(${net.source}; enforced)` : '(default; escalates only for targets you name, printed and recorded)')}`,
     );
     log(c.dim('\n  Providers (detected from environment; keys are never printed):'));
     for (const p of detectProviders())
@@ -612,6 +663,7 @@ program
         '\n  Default buyers and auditors are deterministic and free. Use --buyer / --auditor to opt into an LLM.\n',
       ),
     );
+    if (f.models) await printModelDoctor();
     if (!nodeOk || !hasBrowser) process.exitCode = 1;
   });
 
@@ -694,16 +746,16 @@ const starLine = (v: number) => '★'.repeat(Math.floor(v)) + (v % 1 ? '½' : ''
 program
   .command('launch-check')
   .description(
-    'Five synthetic panels (end users, developers, investors, red team, segments) → one launch-readiness report',
+    'Five synthetic panels (end users, developers, commercial readiness, red team, segments) → one launch-readiness report',
   )
-  .option('--repo <dir>', 'repository to review (developers, investors, red team)')
+  .option('--repo <dir>', 'repository to review (developers, commercial readiness, red team)')
   .option('--url <url>', 'live product URL (end users, segments, privacy)')
   .option('--baseline <url>', 'current version URL (with --candidate: compare)')
   .option('--candidate <url>', 'new version URL')
   .option('--demo', 'use the bundled demo store as the web target')
   .option(
     '--mix <spec>',
-    'attention per panel, e.g. users=40,developers=15,investors=25,security=10,segments=10',
+    'attention per panel, e.g. users=40,developers=15,commercial=25,security=10,segments=10',
   )
   .option('--size <n>', 'total synthetic participants', '40')
   .addOption(
@@ -806,7 +858,11 @@ program
   )
   .argument('[dir]', 'launch directory (default: the latest one)')
   .option('--format <list>', 'comma-separated formats', 'pdf,md,csv')
-  .option('--panel <scope>', 'all | users | developers | investors | security | segments | actions', 'all')
+  .option(
+    '--panel <scope>',
+    'all | users | developers | commercial | security | segments | actions (investors = commercial)',
+    'all',
+  )
   .addOption(new Option('--lang <l>', 'language').choices(['es', 'en', 'nl']).default('en'))
   .option('--out <dir>', 'output folder (default <dir>/exports)')
   .option('--root <dir>', 'output root', DEFAULT_ROOT)
@@ -833,6 +889,7 @@ program
       for (const x of formats)
         if (!EXPORT_FORMATS.includes(x))
           throw new Error(`unknown format ${x} (${EXPORT_FORMATS.join(', ')})`);
+      if (f.panel === 'investors') f.panel = 'commercial'; // renamed; old scripts keep working
       if (!(EXPORT_SCOPES as readonly string[]).includes(f.panel))
         throw new Error(`unknown panel ${f.panel}`);
       const files = await exportLaunch(dir, {
@@ -869,6 +926,9 @@ program
     if (f.open) openInBrowser(s.url);
     process.on('SIGINT', () => void s.close().then(() => process.exit(0)));
   });
+
+registerRcCommands(program);
+registerIntegrationCommands(program);
 
 program.parseAsync(process.argv).catch((err: unknown) => {
   console.error(c.red(`\n  error: ${err instanceof Error ? err.message : String(err)}\n`));

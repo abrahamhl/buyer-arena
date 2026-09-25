@@ -214,6 +214,14 @@ describe('real browser journeys against the demo product', () => {
 });
 
 describe('external engine adapter (Browser Use / Browser Harness boundary)', () => {
+  // The suite runs under network policy OFFLINE; the Node stand-in engine makes no network
+  // calls, which is exactly what this variable asserts.
+  beforeAll(() => {
+    process.env.BUYER_ARENA_ENGINE_OFFLINE_SAFE = '1';
+  });
+  afterAll(() => {
+    delete process.env.BUYER_ARENA_ENGINE_OFFLINE_SAFE;
+  });
   it('runs journeys through an external command and normalises its evidence', async () => {
     const cmd = `"${process.execPath}" tests/fixtures/fake-engine.mjs`;
     const res = await runSession({
@@ -243,5 +251,32 @@ describe('external engine adapter (Browser Use / Browser Harness boundary)', () 
     });
     expect(res.runs[0]!.status).toBe('error');
     expect(res.runs[0]!.events[0]!.detail).toMatch(/invalid result/);
+  });
+});
+
+describe('network policy × external engines', () => {
+  it('OFFLINE refuses to start a sidecar engine unless it is declared network-free', async () => {
+    const pop2 = generatePopulation({ template: 'saas', size: 1, seed: 1 });
+    await expect(
+      runSession({
+        root: tmp(),
+        population: pop2,
+        task: DEMO_TASK,
+        variants: [{ name: 'current', url: 'http://127.0.0.1:9/' }],
+        engineCommand: 'node never-started.mjs',
+      }),
+    ).rejects.toThrow(/OFFLINE: external engines/);
+  });
+
+  it('OFFLINE refuses public targets before any browser starts', async () => {
+    const pop2 = generatePopulation({ template: 'saas', size: 1, seed: 1 });
+    await expect(
+      runSession({
+        root: tmp(),
+        population: pop2,
+        task: DEMO_TASK,
+        variants: [{ name: 'current', url: 'https://example.com/' }],
+      }),
+    ).rejects.toThrow(/OFFLINE refuses browser access to example\.com/);
   });
 });
