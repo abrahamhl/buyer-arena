@@ -339,7 +339,7 @@ function boundary(c) {
       `<label><input type="radio" name="netmode" value="${m}"${m === 'local' ? ' checked' : ''}><span>${m.toUpperCase()}</span></label>`,
   ).join('');
   const link = (cls, allowedByDefault) =>
-    `<div class="bd-link ${cls}"><span class="bd-st st-allowed"${allowedByDefault ? '' : ' hidden'}>${esc(o.allowed)}</span><span class="bd-st st-blocked"${allowedByDefault ? ' hidden' : ''}>✕ ${esc(o.blocked)}</span></div>`;
+    `<div class="bd-link ${cls}${allowedByDefault ? '' : ' is-blocked'}"><span class="bd-st st-allowed"${allowedByDefault ? '' : ' hidden'}>${esc(o.allowed)}</span><span class="bd-st st-blocked"${allowedByDefault ? ' hidden' : ''}>✕ ${esc(o.blocked)}</span></div>`;
   return `<div class="boundary card" id="boundary" data-mode="local">
     <fieldset class="modes">
       <legend>${esc(o.modesTitle)}</legend>
