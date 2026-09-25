@@ -21,14 +21,14 @@ afterAll(() => tmp.forEach((d) => rmSync(d, { recursive: true, force: true })));
 
 describe('mix and allocation', () => {
   it('normalises to 100 and keeps defaults for missing panels', () => {
-    const m = parseMix('investors=60,security=0');
+    const m = parseMix('commercial=60,security=0');
     expect(Object.values(m).reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(99);
     expect(m.security).toBe(0);
-    expect(m.investors).toBeGreaterThan(DEFAULT_MIX.investors);
+    expect(m.commercial).toBeGreaterThan(DEFAULT_MIX.commercial);
   });
   it('rejects bad input and an all-zero mix', () => {
     expect(() => parseMix('users=abc')).toThrow();
-    expect(() => parseMix('users=0,developers=0,investors=0,security=0,segments=0')).toThrow();
+    expect(() => parseMix('users=0,developers=0,commercial=0,security=0,segments=0')).toThrow();
   });
   it('skips panels at 0% and scales with size and depth', () => {
     const a = allocate(parseMix('security=0'), 40, 'standard');

@@ -25,12 +25,13 @@ export interface InvOptions {
 type Signal = { hit: boolean; evidence: Evidence[] };
 
 /**
- * Investor readiness: what an investor or acquirer can VERIFY from the repository.
+ * Commercial readiness: what a buyer, partner or acquirer can VERIFY from the repository.
+ * The reviewers below form an optional "investor lens"; nothing here predicts an investment decision.
  * It never predicts funding; every point is backed by a quoted line.
  */
-export async function runInvestors(o: InvOptions): Promise<PanelResult> {
+export async function runCommercial(o: InvOptions): Promise<PanelResult> {
   const t0 = Date.now();
-  const P = 'investors' as const;
+  const P = 'commercial' as const;
   const repo = new Repo(o.repo);
   const docs = repo.textFiles(/\.(md|mdx)$/i).filter((f) => !/node_modules|CHANGELOG/i.test(f));
   const readme = repo.readme;
@@ -111,7 +112,7 @@ export async function runInvestors(o: InvOptions): Promise<PanelResult> {
   const tagline = /^\s*(\*\*|>|#{1,2} ).{20,}/m.test(top);
   const why = /^#{2,3}\s*(why|the problem|por qué|waarom)/im.test(md);
   c(
-    'inv.problem',
+    'com.problem',
     (readme ? 30 : 0) + (tagline ? 35 : 0) + (why ? 35 : 0),
     3,
     readme
@@ -129,10 +130,10 @@ export async function runInvestors(o: InvOptions): Promise<PanelResult> {
       : [],
   );
   tick('Problem');
-  c('inv.differentiation', S.comparison.hit ? 85 : 25, 3, S.comparison.evidence);
+  c('com.differentiation', S.comparison.hit ? 85 : 25, 3, S.comparison.evidence);
   tick('Differentiation');
   c(
-    'inv.demo',
+    'com.demo',
     (S.demo.hit ? 50 : 0) + (S.visuals.hit ? 35 : 0) + (o.firstSuccessSeconds ? 15 : 0),
     3,
     ev(S.demo, S.visuals),
@@ -140,7 +141,7 @@ export async function runInvestors(o: InvOptions): Promise<PanelResult> {
   );
   tick('Demo');
   const bm = [S.pricing, S.hosted, S.enterprise, S.strategy].filter((x) => x.hit).length;
-  c('inv.business_model', bm * 25, 4, ev(S.strategy, S.hosted, S.enterprise, S.pricing), { signals: bm });
+  c('com.business_model', bm * 25, 4, ev(S.strategy, S.hosted, S.enterprise, S.pricing), { signals: bm });
   tick('Business model');
   const licenseFit = S.permissive.hit
     ? S.hosted.hit || S.enterprise.hit
@@ -149,7 +150,7 @@ export async function runInvestors(o: InvOptions): Promise<PanelResult> {
     : S.copyleft.hit
       ? 70
       : 20;
-  c('inv.license_fit', licenseFit, 2, ev(S.permissive, S.copyleft));
+  c('com.license_fit', licenseFit, 2, ev(S.permissive, S.copyleft));
   tick('License');
 
   // Traction proxies available without network: tests, CI, changelog, commit history.
@@ -166,7 +167,7 @@ export async function runInvestors(o: InvOptions): Promise<PanelResult> {
   const ci = repo.has(/^\.github\/workflows\//).length;
   const changelog = repo.files.includes('CHANGELOG.md');
   c(
-    'inv.traction',
+    'com.traction',
     clamp(Math.min(tests, 10) * 4 + (ci ? 25 : 0) + (changelog ? 15 : 0) + Math.min(commits, 20)),
     2,
     [
@@ -203,7 +204,7 @@ export async function runInvestors(o: InvOptions): Promise<PanelResult> {
       Math.min(Math.max(authors - 1, 0), 5) * 5,
   );
   c(
-    'inv.adoption',
+    'com.adoption',
     adoption,
     4,
     [
@@ -219,7 +220,7 @@ export async function runInvestors(o: InvOptions): Promise<PanelResult> {
   );
   tick('Adoption');
   c(
-    'inv.moat',
+    'com.moat',
     (S.dataMoat.hit ? 45 : 0) +
       (S.hosted.hit ? 25 : 0) +
       (S.agents.hit ? 15 : 0) +
@@ -229,18 +230,18 @@ export async function runInvestors(o: InvOptions): Promise<PanelResult> {
   );
   tick('Moat');
   c(
-    'inv.market',
+    'com.market',
     (S.b2b.hit ? 40 : 0) + (S.devtool.hit ? 30 : 0) + (S.consumer.hit ? 30 : 0) + (S.agents.hit ? 20 : 0),
     2,
     ev(S.b2b, S.devtool, S.agents),
   );
   tick('Market');
-  c('inv.risk_disclosure', (S.limits.hit ? 60 : 0) + (S.security.hit ? 40 : 0), 1, ev(S.limits, S.security));
+  c('com.risk_disclosure', (S.limits.hit ? 60 : 0) + (S.security.hit ? 40 : 0), 1, ev(S.limits, S.security));
   const gov = ['CONTRIBUTING.md', 'CODE_OF_CONDUCT.md', 'SECURITY.md', 'TRADEMARKS.md'].filter((f) =>
     repo.files.includes(f),
   );
   c(
-    'inv.governance',
+    'com.governance',
     gov.length * 25,
     1,
     gov.map((f) => ({ kind: 'file', ref: f })),
@@ -324,35 +325,35 @@ export async function runInvestors(o: InvOptions): Promise<PanelResult> {
 
   const W: Record<string, Record<string, number>> = {
     angel: {
-      'inv.problem': 5,
-      'inv.demo': 5,
-      'inv.differentiation': 3,
-      'inv.market': 2,
-      'inv.business_model': 2,
+      'com.problem': 5,
+      'com.demo': 5,
+      'com.differentiation': 3,
+      'com.market': 2,
+      'com.business_model': 2,
     },
     seed_vc: {
-      'inv.business_model': 5,
-      'inv.moat': 4,
-      'inv.market': 4,
-      'inv.traction': 4,
-      'inv.adoption': 5,
-      'inv.differentiation': 3,
-      'inv.problem': 2,
+      'com.business_model': 5,
+      'com.moat': 4,
+      'com.market': 4,
+      'com.traction': 4,
+      'com.adoption': 5,
+      'com.differentiation': 3,
+      'com.problem': 2,
     },
     strategic: {
-      'inv.differentiation': 4,
-      'inv.license_fit': 4,
-      'inv.traction': 3,
-      'inv.adoption': 4,
-      'inv.moat': 3,
-      'inv.risk_disclosure': 2,
+      'com.differentiation': 4,
+      'com.license_fit': 4,
+      'com.traction': 3,
+      'com.adoption': 4,
+      'com.moat': 3,
+      'com.risk_disclosure': 2,
     },
     oss_foundation: {
-      'inv.license_fit': 5,
-      'inv.governance': 5,
-      'inv.risk_disclosure': 3,
-      'inv.traction': 3,
-      'inv.demo': 2,
+      'com.license_fit': 5,
+      'com.governance': 5,
+      'com.risk_disclosure': 3,
+      'com.traction': 3,
+      'com.demo': 2,
     },
   };
   const reviewers: Reviewer[] = [];

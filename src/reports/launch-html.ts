@@ -15,7 +15,7 @@ export function renderLaunchReport(
   <div data-pane="overview"><section id="lc-overview"></section></div>
   <div id="tab-users-wrap" hidden><div id="lc-users-head"></div>${analysis ? USERS_SECTIONS : ''}</div>
   <div data-pane="developers" hidden><section id="lc-developers"></section></div>
-  <div data-pane="investors" hidden><section id="lc-investors"></section></div>
+  <div data-pane="commercial" hidden><section id="lc-commercial"></section></div>
   <div data-pane="security" hidden><section id="lc-security"></section></div>
   <div data-pane="segments" hidden><section id="lc-segments"></section></div>
   <div data-pane="actions" hidden><section id="lc-actions"></section></div>`;

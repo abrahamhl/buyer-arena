@@ -13,7 +13,7 @@ on:
       mix:
         description: 'Attention per panel'
         required: false
-        default: 'users=40,developers=15,investors=15,security=15,segments=15'
+        default: 'users=40,developers=15,commercial=15,security=15,segments=15'
       size:
         description: 'Synthetic participants (5–200)'
         required: false

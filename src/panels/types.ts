@@ -2,8 +2,8 @@
  * Launch-readiness panels. Every panel answers ONE audience's question with scored checks,
  * and every check cites evidence (file:line, URL, command, or a recorded journey event).
  */
-export type PanelId = 'users' | 'developers' | 'investors' | 'security' | 'segments';
-export const PANELS: PanelId[] = ['users', 'developers', 'investors', 'security', 'segments'];
+export type PanelId = 'users' | 'developers' | 'commercial' | 'security' | 'segments';
+export const PANELS: PanelId[] = ['users', 'developers', 'commercial', 'security', 'segments'];
 
 export interface Evidence {
   kind: 'file' | 'url' | 'command' | 'run' | 'metric';

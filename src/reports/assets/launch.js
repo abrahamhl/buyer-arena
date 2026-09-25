@@ -5,7 +5,7 @@
   const BA = window.BA;
   const { t, esc, icon } = BA;
   const $ = (s, el = document) => el.querySelector(s);
-  const PANELS = ['users', 'developers', 'investors', 'security', 'segments'];
+  const PANELS = ['users', 'developers', 'commercial', 'security', 'segments'];
   const TABS = ['overview', ...PANELS, 'actions'];
   const ui = { tab: 'overview', status: {}, q: {}, actionPanel: 'all' };
   try {
@@ -114,7 +114,7 @@
   const PCOL = () => ({
     users: color('--accent'),
     developers: '#8e7dff',
-    investors: '#e9a23b',
+    commercial: '#e9a23b',
     security: color('--bad'),
     segments: color('--good'),
   });
@@ -165,7 +165,7 @@
       </div>
       <div class="panel-cards">${PANELS.map((p) => {
         const r = panel(p);
-        return `<button type="button" class="card pcard" data-tab="${p}"><div class="pc-top"><span class="pc-ic" style="color:${PCOL()[p]}">${icon(p === 'security' ? 'redteam' : p === 'users' ? 'customer' : p === 'developers' ? 'engineering' : p === 'investors' ? 'business' : 'ux', 18)}</span><span class="pc-share">${r ? r.share : 0}%</span></div>
+        return `<button type="button" class="card pcard" data-tab="${p}"><div class="pc-top"><span class="pc-ic" style="color:${PCOL()[p]}">${icon(p === 'security' ? 'redteam' : p === 'users' ? 'customer' : p === 'developers' ? 'engineering' : p === 'commercial' ? 'business' : 'ux', 18)}</span><span class="pc-share">${r ? r.share : 0}%</span></div>
           <b>${esc(panelName(p))}</b><small>${esc(t('panelq.' + p))}</small>
           <div class="pc-score">${r && r.score != null ? `<span style="color:${scoreColor(r.score)}">${Math.round(r.score)}</span><span class="of">/100</span>` : `<span class="dim">—</span>`}</div>
           ${r && r.score != null ? stars(r.stars) : `<small class="dim">${esc(t('lc.skipped', { why: r ? r.skipped : '' }))}</small>`}</button>`;
@@ -233,8 +233,8 @@
           ? 'segx.' + x.archetype
           : 'aud.' + id + '.' + x.archetype;
     const extra =
-      id === 'investors'
-        ? investorsBlock(r)
+      id === 'commercial'
+        ? commercialBlock(r)
         : id === 'security'
           ? securityBlock(r)
           : id === 'segments'
@@ -267,7 +267,7 @@
       <div class="cbody"><p>${esc(chkDetail(c))}</p><p class="fix"><b>${esc(t('lc.fix'))}</b> ${esc(chkFix(c))}</p>
       ${c.evidence.length ? `<div class="evl"><b>${esc(t('lc.evidence'))}</b>${c.evidence.map((e) => `<div class="evi"><span class="mono">${esc(e.ref)}</span>${e.excerpt ? `<span class="dim"> — ${esc(e.excerpt)}</span>` : ''}</div>`).join('')}</div>` : ''}</div></details>`;
   }
-  function investorsBlock(r) {
+  function commercialBlock(r) {
     const x = r.extra || {};
     const models = (x.models || []).map((m) => ({
       label: t('model.' + m.id),
@@ -278,9 +278,9 @@
     const reasons = rec
       ? rec.reasons.map((k) => `<span class="chip">${esc(t('sig.' + k))}</span>`).join('')
       : '';
-    return `<div class="card pad reco"><div><div class="l">${esc(t('inv.reco.l'))}</div><h3>${esc(t('model.' + x.recommended))}</h3><p class="muted">${esc(t('model.' + x.recommended + '.d'))}</p><div class="chips">${reasons}</div><small class="dim">${esc(t('inv.reco.sub', { model: t('model.' + x.runner_up) }))}</small></div>${gauge(x.virality, t('inv.viral'))}</div>
-      <div class="grid-2" style="margin-top:20px">${chartCard(t('inv.models'), hbars(models), 'models')}${chartCard(t('inv.strategic'), hbars((x.strategic || []).map((s) => ({ label: t('strat.' + s.id), value: s.fit, color: '#e9a23b' }))), 'strategic')}</div>
-      <div class="card pad" style="margin-top:20px"><div class="cc-head"><h3>${esc(t('inv.viral'))}</h3><span class="pill">${x.virality}/100</span></div><div class="vgrid">${(x.viral || []).map((v) => `<div class="vi ${v.pts ? 'on' : ''}"><span>${v.pts ? '✓' : '·'}</span>${esc(t('viral.' + v.id))}<b>+${v.pts}</b></div>`).join('')}</div></div>`;
+    return `<div class="card pad reco"><div><div class="l">${esc(t('com.reco.l'))}</div><h3>${esc(t('model.' + x.recommended))}</h3><p class="muted">${esc(t('model.' + x.recommended + '.d'))}</p><div class="chips">${reasons}</div><small class="dim">${esc(t('com.reco.sub', { model: t('model.' + x.runner_up) }))}</small></div>${gauge(x.virality, t('com.viral'))}</div>
+      <div class="grid-2" style="margin-top:20px">${chartCard(t('com.models'), hbars(models), 'models')}${chartCard(t('com.strategic'), hbars((x.strategic || []).map((s) => ({ label: t('strat.' + s.id), value: s.fit, color: '#e9a23b' }))), 'strategic')}</div>
+      <div class="card pad" style="margin-top:20px"><div class="cc-head"><h3>${esc(t('com.viral'))}</h3><span class="pill">${x.virality}/100</span></div><div class="vgrid">${(x.viral || []).map((v) => `<div class="vi ${v.pts ? 'on' : ''}"><span>${v.pts ? '✓' : '·'}</span>${esc(t('viral.' + v.id))}<b>+${v.pts}</b></div>`).join('')}</div></div>`;
   }
   function securityBlock(r) {
     const x = r.extra || {};
@@ -388,9 +388,9 @@
         out.push(t('lc.skipped', { why: r.skipped }), '');
         continue;
       }
-      if (p === 'investors' && r.extra)
+      if (p === 'commercial' && r.extra)
         out.push(
-          `**${t('inv.reco.l')}:** ${t('model.' + r.extra.recommended)} · ${t('inv.viral')}: ${r.extra.virality}/100`,
+          `**${t('com.reco.l')}:** ${t('model.' + r.extra.recommended)} · ${t('com.viral')}: ${r.extra.virality}/100`,
           '',
         );
       if (p === 'security' && r.extra)
@@ -496,7 +496,7 @@
     ['#lc-overview .score-card', 'lguide.1'],
     ['#lc-overview .panel-cards', 'lguide.2'],
     ['#mode', 'lguide.3'],
-    ['#links a[data-tab="investors"], #subnav a[data-tab="investors"]', 'lguide.4'],
+    ['#links a[data-tab="commercial"], #subnav a[data-tab="commercial"]', 'lguide.4'],
     ['#lc-overview .x-bar', 'lguide.5'],
     ['#lang', 'lguide.6'],
   ]);
