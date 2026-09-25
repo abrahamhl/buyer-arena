@@ -1,0 +1,37 @@
+# Post the Buyer Arena summary on the PR. Copy to .github/workflows/ next to a workflow named
+# "Buyer Arena" that calls the reusable workflow. This job runs in the context of the base
+# repository with a write token, and therefore NEVER checks out or runs PR code: it only
+# reads the small Markdown artifact the read-only job produced.
+name: Buyer Arena comment
+on:
+  workflow_run:
+    workflows: ['Buyer Arena']
+    types: [completed]
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+jobs:
+  comment:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: buyer-arena-pr
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+      - uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const fs = require('fs');
+            const pr = Number(fs.readFileSync('buyer-arena/pr-number.txt', 'utf8').trim());
+            if (!Number.isInteger(pr) || pr <= 0) throw new Error('bad PR number');
+            // The summary is untrusted text from a PR run: cap it and post it as-is.
+            const body = fs.readFileSync('buyer-arena/pr-summary.md', 'utf8').slice(0, 4000);
+            const marker = '<!-- buyer-arena -->';
+            const { data: comments } = await github.rest.issues.listComments({ ...context.repo, issue_number: pr });
+            const mine = comments.find((c) => c.body?.includes(marker));
+            const payload = { ...context.repo, body: `${marker}\n${body}` };
+            if (mine) await github.rest.issues.updateComment({ ...payload, comment_id: mine.id });
+            else await github.rest.issues.createComment({ ...payload, issue_number: pr });

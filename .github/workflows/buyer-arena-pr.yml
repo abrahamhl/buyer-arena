@@ -1,0 +1,77 @@
+# Reusable workflow: synthetic buyers on a pull request (baseline deployment vs candidate).
+#
+#   jobs:
+#     buyers:
+#       uses: abrahamhl/buyer-arena/.github/workflows/buyer-arena-pr.yml@<pinned-sha>
+#       with:
+#         baseline-url: https://production.example.com
+#         candidate-url: https://pr-${{ github.event.number }}.preview.example.com
+#         success-text: 'welcome|trial is active'
+#
+# Security model:
+#   - read-only token; no secrets are used or required (deterministic buyers, no model calls)
+#   - safe on fork PRs: it never checks out or executes the PR's code, only visits URLs
+#   - inputs reach the shell through env vars, never through ${{ }} interpolation
+#   - it does NOT comment: it uploads `pr-summary.md`; a separate workflow_run job with
+#     pull-requests: write posts it (examples/github-actions/pr-comment.yml)
+name: Buyer Arena (reusable)
+on:
+  workflow_call:
+    inputs:
+      baseline-url: { type: string, required: true }
+      candidate-url: { type: string, required: true }
+      success-text: { type: string, required: true }
+      size: { type: string, required: false, default: '20' }
+      seed: { type: string, required: false, default: '42' }
+      buyer-arena-ref:
+        { type: string, required: false, default: 'main', description: 'Buyer Arena git ref (pin a SHA)' }
+permissions:
+  contents: read
+jobs:
+  buyers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      IN_BASELINE: ${{ inputs.baseline-url }}
+      IN_CANDIDATE: ${{ inputs.candidate-url }}
+      IN_SUCCESS: ${{ inputs.success-text }}
+      IN_SIZE: ${{ inputs.size }}
+      IN_SEED: ${{ inputs.seed }}
+      NO_COLOR: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: abrahamhl/buyer-arena
+          ref: ${{ inputs.buyer-arena-ref }}
+          path: buyer-arena
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Install Buyer Arena
+        working-directory: buyer-arena
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: Compare baseline vs candidate
+        working-directory: buyer-arena
+        # ONLINE only because the targets are deployments you name; nothing else is contacted.
+        run: |
+          node dist/cli/main.js --network online compare \
+            --baseline "$IN_BASELINE" --candidate "$IN_CANDIDATE" \
+            --success-text "$IN_SUCCESS" --size "$IN_SIZE" --seed "$IN_SEED" --root out
+      - name: PR summary
+        if: always()
+        working-directory: buyer-arena
+        run: |
+          node dist/cli/main.js pr-summary --root out --out pr-summary.md \
+            --report-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" || echo "No summary produced." > pr-summary.md
+          cat pr-summary.md >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ github.event.number }}" > pr-number.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: buyer-arena-pr
+          path: |
+            buyer-arena/pr-summary.md
+            buyer-arena/pr-number.txt
+            buyer-arena/out/sessions/
+          retention-days: 14
