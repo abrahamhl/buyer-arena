@@ -27,7 +27,7 @@
     "test": "npm run build --silent && vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
-    "setup:browser": "playwright install chromium",
+    "setup:browser": "node scripts/setup-browser.mjs",
     "demo": "npm run setup:browser --silent && npm run build --silent && node dist/cli/main.js demo",
     "ba": "npm run build --silent && node dist/cli/main.js",
     "mcp": "node dist/cli/main.js mcp",
