@@ -1320,8 +1320,14 @@ td.skip-v {
   margin: 12px 0 14px;
   max-width: 40ch;
 }
-.foot-privacy {
+.foot-privacy-wrap {
   margin: 0;
+}
+.foot-privacy {
+  text-decoration: none;
+}
+.foot-privacy:hover {
+  text-decoration: underline;
 }
 .foot-links {
   list-style: none;

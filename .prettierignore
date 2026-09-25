@@ -7,3 +7,4 @@ site-dist
 site/qa-shots
 out
 .tmp
+site/report

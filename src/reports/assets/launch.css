@@ -460,3 +460,13 @@
   flex: none;
   white-space: nowrap;
 }
+/* Long target URLs wrap instead of widening the hero on phones. */
+.lc-hero .pill {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.bi > span:not(.dot) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
