@@ -131,7 +131,8 @@ export const content = {
       soon: 'disponible en el lanzamiento público',
     },
     hero: {
-      title: 'La capa de evaluación <em>basada en evidencia</em> para el software que crean personas y agentes IA.',
+      title:
+        'La capa de evaluación <em>basada en evidencia</em> para el software que crean personas y agentes IA.',
       sub: 'Mide lo que ocurre de verdad —recorridos reales en navegador, compradores sintéticos, herramientas de seguridad y de evaluación— antes de que tus usuarios encuentren los problemas. Local primero, sin atarte a ningún modelo ni proveedor.',
       cta1: 'Ejecutar en local',
       cta2: 'Ver un informe real',
@@ -291,7 +292,10 @@ export const content = {
       lead: 'En breve y con precisión. Lo experimental está marcado.',
       experimental: 'EXPERIMENTAL',
       items: [
-        ['Evidence Protocol v1', 'Evidencia portable en JSONL que cualquier herramienta puede escribir y leer.'],
+        [
+          'Evidence Protocol v1',
+          'Evidencia portable en JSONL que cualquier herramienta puede escribir y leer.',
+        ],
         [
           'SDK de integración',
           'Un contrato pequeño para añadir herramientas como adaptadores; <code>integrations list</code> muestra las disponibles.',
@@ -309,13 +313,23 @@ export const content = {
           'Caché exacta de respuestas',
           'Una petición idéntica se responde desde una caché local en lugar de ir al proveedor.',
         ],
-        ['Flujo de PR en GitHub', 'Un flujo reutilizable que publica un único comentario compacto con la diferencia.'],
-        ['Estados de calibración', 'UNCALIBRATED · PARTIALLY CALIBRATED · CALIBRATED, con métricas de error.'],
+        [
+          'Flujo de PR en GitHub',
+          'Un flujo reutilizable que publica un único comentario compacto con la diferencia.',
+        ],
+        [
+          'Estados de calibración',
+          'UNCALIBRATED · PARTIALLY CALIBRATED · CALIBRATED, con métricas de error.',
+        ],
         [
           'Auditoría estática de repositorios',
           'Audita un repositorio público por URL sin ejecutarlo: STATIC AUDIT · NO CODE EXECUTED.',
         ],
-        ['Conjunto de modelos', 'Varias rutas de modelo sobre el mismo comprador para sacar a la luz el desacuerdo.', 1],
+        [
+          'Conjunto de modelos',
+          'Varias rutas de modelo sobre el mismo comprador para sacar a la luz el desacuerdo.',
+          1,
+        ],
       ],
     },
     integ: {
@@ -366,10 +380,12 @@ export const content = {
       allowed: 'permitido',
       modesTitle: 'Política de red',
       modes: {
-        offline: 'Solo loopback. Funcionan los modelos locales, los destinos en localhost y los repositorios locales; nada más.',
+        offline:
+          'Solo loopback. Funcionan los modelos locales, los destinos en localhost y los repositorios locales; nada más.',
         local: 'Loopback más tu red privada (LAN, Docker). Es el punto de partida si no eliges nada.',
         hybrid: 'Lo local más los proveedores de modelos que hayas elegido. Nada más sale de la máquina.',
-        online: 'Cualquier host, siempre dentro de las reglas de seguridad, como navegar solo en el mismo origen.',
+        online:
+          'Cualquier host, siempre dentro de las reglas de seguridad, como navegar solo en el mismo origen.',
       },
       ledger:
         'Cada ejecución registra qué salió de la máquina: hosts contactados, proveedores que recibieron datos y lo que se rechazó. Sin elección explícita, parte de LOCAL y solo se amplía para un destino que indiques en el comando, y lo avisa.',
@@ -694,7 +710,10 @@ export const content = {
         ],
         ['Model router', 'Explicit pinning and cost-aware routing: quality, balanced, economy or offline.'],
         ['Token economy report', 'Tokens and cost per run, and cost per finding.'],
-        ['Exact response cache', 'An identical request is answered from a local cache instead of the provider.'],
+        [
+          'Exact response cache',
+          'An identical request is answered from a local cache instead of the provider.',
+        ],
         ['GitHub PR workflow', 'A reusable workflow that posts one compact comment with the delta.'],
         ['Calibration states', 'UNCALIBRATED · PARTIALLY CALIBRATED · CALIBRATED, with error metrics.'],
         [
@@ -753,7 +772,8 @@ export const content = {
       modesTitle: 'Network policy',
       modes: {
         offline: 'Loopback only. Local models, localhost targets and local repositories work; nothing else.',
-        local: 'Loopback plus your private network (LAN, Docker). The starting point when you choose nothing.',
+        local:
+          'Loopback plus your private network (LAN, Docker). The starting point when you choose nothing.',
         hybrid: 'Local plus the model providers you selected. Nothing else leaves the machine.',
         online: 'Any host, still within the safety rules such as same-origin browsing.',
       },
@@ -795,7 +815,8 @@ export const content = {
       ciLink: 'Open the “Launch check” workflow',
       agentsTitle: 'From AI agents',
       agentsText: 'An MCP server so an agent can start audits and read the results.',
-      agentsNote: 'Listens on localhost only by default. Exposing it to the network is an explicit choice you make.',
+      agentsNote:
+        'Listens on localhost only by default. Exposing it to the network is an explicit choice you make.',
     },
     safety: {
       title: 'Safety and privacy',
@@ -1074,8 +1095,14 @@ export const content = {
         ],
         ['Modelrouter', 'Expliciet vastpinnen en routeren op kosten: quality, balanced, economy of offline.'],
         ['Tokeneconomie-rapport', 'Tokens en kosten per run, en kosten per bevinding.'],
-        ['Exacte response-cache', 'Een identiek verzoek wordt uit een lokale cache beantwoord in plaats van door de aanbieder.'],
-        ['GitHub-PR-workflow', 'Een herbruikbare workflow die één compacte reactie met het verschil plaatst.'],
+        [
+          'Exacte response-cache',
+          'Een identiek verzoek wordt uit een lokale cache beantwoord in plaats van door de aanbieder.',
+        ],
+        [
+          'GitHub-PR-workflow',
+          'Een herbruikbare workflow die één compacte reactie met het verschil plaatst.',
+        ],
         ['Kalibratiestatussen', 'UNCALIBRATED · PARTIALLY CALIBRATED · CALIBRATED, met foutmaten.'],
         [
           'Statische repository-audit',
@@ -1132,7 +1159,8 @@ export const content = {
       allowed: 'toegestaan',
       modesTitle: 'Netwerkbeleid',
       modes: {
-        offline: 'Alleen loopback. Lokale modellen, doelen op localhost en lokale repositories werken; verder niets.',
+        offline:
+          'Alleen loopback. Lokale modellen, doelen op localhost en lokale repositories werken; verder niets.',
         local: 'Loopback plus je privénetwerk (LAN, Docker). Het vertrekpunt als je niets kiest.',
         hybrid: 'Lokaal plus de modelaanbieders die je koos. Verder verlaat niets de machine.',
         online: 'Elke host, nog steeds binnen de veiligheidsregels, zoals browsen binnen dezelfde origin.',
@@ -1175,7 +1203,8 @@ export const content = {
       ciLink: 'Open de workflow “Launch check”',
       agentsTitle: 'Vanuit AI-agents',
       agentsText: 'Een MCP-server, zodat een agent audits kan starten en de resultaten kan lezen.',
-      agentsNote: 'Luistert standaard alleen op localhost. Openstellen voor het netwerk is een bewuste keuze van jou.',
+      agentsNote:
+        'Luistert standaard alleen op localhost. Openstellen voor het netwerk is een bewuste keuze van jou.',
     },
     safety: {
       title: 'Veiligheid en privacy',

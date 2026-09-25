@@ -65,7 +65,8 @@ const reportSrc = join(SITE, 'report');
 // The self-audit report (report/index.html) is optional and placed by another step.
 const hasSelfAudit = existsSync(join(reportSrc, 'index.html'));
 const hasDemo = existsSync(join(reportSrc, 'demo', 'report.html'));
-if (!hasDemo) console.warn('warning: site/report/demo/report.html is missing: the "real report" links will 404');
+if (!hasDemo)
+  console.warn('warning: site/report/demo/report.html is missing: the "real report" links will 404');
 
 const ctxBase = { base, origin, hasOg, state, version, hasSelfAudit, v: { css: hash(css), js: hash(js) } };
 const pages = [];

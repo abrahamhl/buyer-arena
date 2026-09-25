@@ -38,13 +38,19 @@ const ICONS = {
     '<path d="M3 4h2l2.2 10.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1L20.5 8H6.2"/><circle cx="9.5" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/>',
     20,
   ),
-  developers: svg('<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="m7.5 10 2.5 2-2.5 2M12.5 15h4"/>', 20),
+  developers: svg(
+    '<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="m7.5 10 2.5 2-2.5 2M12.5 15h4"/>',
+    20,
+  ),
   commercial: svg('<path d="M4 19.5h16"/><path d="m5 15 4.5-4.5 3.5 3L19 7.5"/><path d="M15 7.5h4v4"/>', 20),
   security: svg(
     '<path d="M12 3.2 5 6v5.4c0 4.3 3 7.9 7 9.4 4-1.5 7-5.1 7-9.4V6z"/><path d="M12 8.5v4.2M12 15.6v.1"/>',
     20,
   ),
-  segments: svg('<circle cx="9" cy="10" r="5.2"/><circle cx="15" cy="10" r="5.2"/><circle cx="12" cy="15" r="5.2"/>', 20),
+  segments: svg(
+    '<circle cx="9" cy="10" r="5.2"/><circle cx="15" cy="10" r="5.2"/><circle cx="12" cy="15" r="5.2"/>',
+    20,
+  ),
 };
 
 const I = {
@@ -57,7 +63,10 @@ const I = {
     ' stroke-width="2"',
   ),
   check: svg('<path d="m5 12.5 4.5 4.5L19 7.5"/>', 18, ' stroke-width="2"'),
-  lock: svg('<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V7.8a3.5 3.5 0 0 1 7 0v2.7"/>', 16),
+  lock: svg(
+    '<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5V7.8a3.5 3.5 0 0 1 7 0v2.7"/>',
+    16,
+  ),
   alert: svg('<path d="M12 3.5 2.8 19.5h18.4z"/><path d="M12 10v4.2M12 16.8v.1"/>', 18),
   pause: svg('<path d="M9 6v12M15 6v12"/>', 14, ' stroke-width="2.4"'),
   github:
@@ -132,7 +141,9 @@ function jsonLd(ctx) {
     operatingSystem: 'Windows, macOS, Linux',
     license: 'https://www.apache.org/licenses/LICENSE-2.0',
     ...(ctx.version ? { softwareVersion: ctx.version } : {}),
-    ...(isPublic(ctx) ? { sameAs: [REPO], offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' } } : {}),
+    ...(isPublic(ctx)
+      ? { sameAs: [REPO], offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' } }
+      : {}),
   };
   return `\n  <script type="application/ld+json">${JSON.stringify(data).replace(/</g, '\\u003c')}</script>`;
 }
@@ -417,8 +428,7 @@ export function indexPage(ctx) {
     ['$0', r.facts.cost],
   ]
     .map(
-      ([v, l, cls]) =>
-        `<div class="fact${cls ? ' ' + cls : ''}"><dt>${esc(l)}</dt><dd>${esc(v)}</dd></div>`,
+      ([v, l, cls]) => `<div class="fact${cls ? ' ' + cls : ''}"><dt>${esc(l)}</dt><dd>${esc(v)}</dd></div>`,
     )
     .join('');
 
@@ -442,7 +452,8 @@ export function indexPage(ctx) {
       </section>`,
   ).join('\n      ');
   const legend = STATUSES.map(
-    (st) => `<div><dt><span class="badge b-${st}">${STATUS_LABEL[st]}</span></dt><dd>${esc(ig.legend[st])}</dd></div>`,
+    (st) =>
+      `<div><dt><span class="badge b-${st}">${STATUS_LABEL[st]}</span></dt><dd>${esc(ig.legend[st])}</dd></div>`,
   ).join('');
 
   const o = c.offline;
