@@ -99,6 +99,23 @@ describe('model catalog', () => {
     });
   });
 
+  it('openai-compatible is local exactly when its endpoint is loopback/LAN', () => {
+    process.env.OPENAI_BASE_URL = 'http://127.0.0.1:8000/v1';
+    expect(describeSpec('openai-compatible:qwen')).toMatchObject({
+      locality: 'local',
+      pricing_source: 'free-local',
+    });
+    expect(
+      route(
+        { purpose: 'buyer', pinned: 'openai-compatible:qwen', policy: 'offline' },
+        loadCatalog({ snapshotFile: '/x' }),
+      ).selected,
+    ).toBe('openai-compatible:qwen');
+    process.env.OPENAI_BASE_URL = 'https://gateway.example.com/v1';
+    expect(describeSpec('openai-compatible:qwen').locality).toBe('cloud');
+    delete process.env.OPENAI_BASE_URL;
+  });
+
   it('local specs are free and local; OpenRouter auto/free routes are dynamic', () => {
     expect(describeSpec('ollama:llama3.1')).toMatchObject({
       locality: 'local',

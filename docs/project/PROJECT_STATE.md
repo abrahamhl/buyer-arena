@@ -1,4 +1,10 @@
-# Project state — 2026-09-24
+# Project state — 2026-09-25 (0.2.0-rc.1)
+
+> Release candidate: evaluation control plane (network policy, Evidence Protocol v1, integration SDK,
+> model router, agent-eval, calibration states). See `RC_FINAL_REPORT.md` for the RC summary; the
+> table below is the MVP baseline it builds on.
+
+## MVP baseline (2026-09-24)
 
 **The MVP runs.** `npm install && npm run demo` performs 40 real Chromium journeys (20 buyers × 2
 variants) in 15–30 s and writes the report and the ROI backlog. No paid API is called.

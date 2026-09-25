@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { writeFileAtomic } from '../core/fs.js';
-import { currentLedger } from '../policy/network.js';
+import { currentLedger, isLocalEndpoint } from '../policy/network.js';
 import { lookupPricing, PESSIMISTIC_PRICING } from '../providers/pricing.js';
 import type { ModelPricing } from '../providers/types.js';
 
@@ -283,7 +283,9 @@ export function describeSpec(spec: string, catalog?: Catalog): ModelInfo {
   if (hit) return hit;
   const [provider = spec, ...rest] = spec.split(':');
   const model = rest.join(':');
-  const local = provider === 'lmstudio' || provider === 'ollama';
+  // openai-compatible is local when its endpoint is loopback/LAN (vLLM, llama.cpp, LocalAI…).
+  const compatLocal = provider === 'openai-compatible' && isLocalEndpoint(process.env.OPENAI_BASE_URL ?? '');
+  const local = provider === 'lmstudio' || provider === 'ollama' || compatLocal;
   const delegated = provider === 'opencode';
   const dynamic = provider === 'openrouter' && isDynamicOpenRouterModel(model);
   const table = lookupPricing(model);

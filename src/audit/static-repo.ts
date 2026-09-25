@@ -75,6 +75,8 @@ async function get(url: string, timeoutMs: number, accept = 'application/json'):
       headers: { accept, 'user-agent': 'buyer-arena-static-audit' },
       redirect: 'follow',
     });
+    // A redirect to any other host would bypass the network policy check: discard it.
+    if (res.redirected && new URL(res.url).host !== new URL(url).host) return null;
     return res.ok ? res : null;
   } catch {
     return null;
