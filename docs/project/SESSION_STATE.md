@@ -18,16 +18,20 @@ Chromium 1194; Playwright 1.63 wants 1243).
 
 Suite: 159 tests green; lint, format, secret scan clean.
 
-## Remaining (P0 first)
+## Done in phase 3–4
 
-1. Wire `--routing` / `--buyer auto` / cache into run/compare/audit + economy block in report.
-2. Browser Use reference sidecar (Python) + Stagehand v4 reference sidecar.
-3. Reusable GitHub workflow + compact PR comment.
-4. Static URL audit (`audit-repo github.com/o/r`), NO CODE EXECUTED.
-5. Ensemble disagreement (experimental).
-6. Docs: README, INTEGRATIONS (license table), ARCHITECTURE, METHODOLOGY, OFFLINE.
-7. Site: pre-launch state, self-audit label, commercial rename, redesign, a11y.
-8. Dogfood (self-audit both repos) + `RC_FINAL_REPORT.md`.
+Routing/cache/economy wired into runs · Browser Use sidecar (verified end to end with the
+scripted model) + Stagehand reference · reusable PR workflow + comment example + `pr-summary` ·
+`audit-repo` (static) · `ensemble` (experimental) · README, OFFLINE, MODELS, AGENT_EVAL,
+EVIDENCE_PROTOCOL, INTEGRATIONS (license matrix), ARCHITECTURE, METHODOLOGY, CHANGELOG ·
+version 0.2.0-rc.1 (not published). Suite: 164 passed, 1 opt-in skipped.
+
+## Remaining
+
+1. Site redesign (delegated specialist; files: site/**, scripts/build-site.mjs) → review, commit,
+   branch + draft PR in abrahamhl/buyer-arena-site (do NOT push to its main: that publishes).
+2. Dogfood: self-audit of buyer-arena and buyer-arena-site, npm audit, pack dry run.
+3. `docs/project/RC_FINAL_REPORT.md`, refresh NEXT/OPEN_LOOPS/PROJECT_STATE.
 
 ## Decisions
 

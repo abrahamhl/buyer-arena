@@ -38,3 +38,11 @@ protected by trademark, not by the code license.
 - Enterprise customers ask for indemnification. Handle that in commercial contracts, not in the OSS license.
 
 _This is an engineering and product recommendation, not legal advice. Confirm with counsel before the first public release._
+
+## Calibration data and datasets stay separate
+
+The long-term moat is calibration data, evaluation datasets, the integration ecosystem and
+workflow adoption. Any future proprietary calibration dataset or hosted calibration service will
+live **outside** this Apache-2.0 repository and connect through the same aggregate-only
+calibration input and Evidence Protocol that anyone can use. This repository contains no
+proprietary or fabricated data.

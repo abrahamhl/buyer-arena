@@ -70,6 +70,39 @@ the minimum group size behind them (at least 10). It has no field for an individ
 reports the simulated rate against the real rate for each funnel stage, plus a real/simulated
 correction factor. That factor is recorded as metadata and is **not** applied to results.
 
+### 5.1 Calibration metrics and state (v0.2)
+
+Inputs stay aggregate-only. For each funnel stage Buyer Arena compares the simulated rate `p`
+with the real rate `r` (optionally over `n` visitors):
+
+- **MAE**, **RMSE** over stages.
+- **Brier score**, exact from aggregates: with a constant prediction `p` for `n` binary outcomes
+  whose mean is `r`, mean Brier = `r·(1−p)² + (1−r)·p²`; weighted by `n` when given. A reference
+  Brier (always predicting the overall real mean) is reported next to it.
+- **ECE** with each stage as a bin, weighted by `n`; the calibration curve lists (predicted,
+  observed) per stage.
+- **Directional agreement** between the simulated baseline→candidate delta and a real A/B delta.
+- **FPR / FNR** of friction topics against independently labelled findings (usability study,
+  support tickets).
+
+State (`buyer-arena calibrate` → `calibration.json`):
+
+| State                | Rule                                                                                                                                                                                                                                         |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| UNCALIBRATED         | no comparable external evidence, or `evidence_kind: synthetic` (a simulation never calibrates a simulation)                                                                                                                                  |
+| PARTIALLY_CALIBRATED | some external evidence that does not meet every threshold                                                                                                                                                                                    |
+| CALIBRATED           | ≥3 comparable stages from groups ≥100 with MAE ≤10pp **and** an independent second signal: correct direction on a real A/B delta, or ≥10 labelled findings with FPR and FNR ≤30% — valid only for that product, population template and task |
+
+Thresholds are conservative defaults chosen for this project, not a scientific standard.
+
+### 5.2 Model disagreement (experimental)
+
+`buyer-arena ensemble <sessions…>` compares buyers that ran the same population and task:
+completion and decision agreement, Cohen's kappa, friction Jaccard and trajectory divergence
+(normalised edit distance of visited paths). It reports four uncertainty sources **separately**
+and never merges them: population uncertainty (interval width), run variance (repeats of the same
+buyer), model disagreement, calibration error. Agreement between models is not truth.
+
 ## 6. Known limitations
 
 - The deterministic buyer is a model of behaviour, not a human. Its objections come from persona configuration, and several detectors depend on its parameters: the price-sensitivity threshold, the scroll budget, the step budget, and a pop-up tolerance of 2 attempts. The red team discloses this for every finding it affects. A sensitivity sweep over these parameters is on the roadmap.

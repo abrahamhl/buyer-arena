@@ -35,3 +35,41 @@ export { createProvider, detectProviders, MockProvider, CostMeter } from './prov
 export { startDemoStore } from './demo-store/server.js';
 export { runPipeline, runDemo, resumeSession } from './workflow.js';
 export { createMcpServer } from './mcp/server.js';
+
+/* Evaluation control plane (v0.2). */
+export {
+  classifyHost,
+  currentLedger,
+  NetworkLedger,
+  NetworkPolicyError,
+  resolvePolicy,
+  withNetworkScope,
+  type NetworkLedgerV1,
+  type NetworkMode,
+  type NetworkPolicy,
+} from './policy/network.js';
+export {
+  EvidenceEnvelopeV1Schema,
+  makeEvidence,
+  summarizeEvidence,
+  type EvidenceEnvelopeV1,
+} from './evidence/envelope.js';
+export { readEvidence, writeEvidence } from './evidence/store.js';
+export { INTEGRATIONS, getIntegration, listIntegrations } from './integrations/registry.js';
+export type { Integration, IntegrationManifest } from './integrations/sdk.js';
+export { loadCatalog, describeSpec, type Catalog, type ModelInfo } from './models/catalog.js';
+export {
+  route,
+  runCascade,
+  type ModelRequestProfile,
+  type RoutingDecision,
+  type RoutingPolicy,
+} from './models/router.js';
+export { ResponseCache } from './models/cache.js';
+export { economyReport, type EconomyReport } from './models/economy.js';
+export { AgentRunEnvelopeSchema, type AgentRunEnvelope } from './agent/envelope.js';
+export { runAgentEval, compareAgentEvals, type AgentEvalReport } from './agent/eval.js';
+export { buildGraph, evaluateGates, ReleaseGatesSchema, type LifecycleGraph } from './lifecycle/graph.js';
+export { assessCalibration, type CalibrationState } from './calibration/metrics.js';
+export { compareEnsemble } from './ensemble/disagreement.js';
+export { launchChromium } from './core/browser.js';

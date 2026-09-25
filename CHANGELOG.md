@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.2.0-rc.1 — 2026-09-25 (release candidate, not published)
+
+### Added
+
+- Global network policy `offline | local | hybrid | online` with a per-command ledger (hosts
+  contacted, providers that received data, adapters, denials) stored in every artifact.
+- Evidence Protocol v1 (`EvidenceEnvelopeV1`, `evidence.jsonl`) for built-in results and
+  integrations; secret values never stored.
+- Integration SDK and bridges: Promptfoo, garak, Gitleaks, Trivy, Nuclei (import-only by default),
+  DeepEval, Inspect AI, lm-evaluation-harness, PyRIT (contract), OpenTelemetry GenAI traces;
+  working Browser Use reference sidecar; Stagehand v4 reference sidecar (experimental).
+- Model catalog (built-in + optional Models.dev snapshot + overrides), cost-aware router with
+  explicit pinning, OpenRouter and OpenCode providers, exact response cache, token-economy report,
+  `doctor --models`.
+- `agent-eval` / `agent-compare` with AgentRunEnvelope, lifecycle graph and release gates; `gate`.
+- Calibration metrics (RMSE, aggregate Brier, ECE, FPR/FNR, direction) and calibration states.
+- Reusable PR workflow, fork-safe comment example, `pr-summary`.
+- `audit-repo` static audit of GitHub URLs (no code executed); `ensemble` (experimental).
+- `BUYER_ARENA_CHROMIUM_PATH` for air-gapped machines.
+
+### Changed
+
+- Launch-check panel **Investors → Commercial Readiness** (investor lens inside). Old mix keys,
+  export scopes and launch reports are migrated.
+- npm audit in the red-team panel runs only when the policy already allows the registry.
+
 ## 0.1.0 — 2026-09-24 (MVP)
 
 ### Added

@@ -1,7 +1,7 @@
 {
   "name": "buyer-arena",
-  "version": "0.1.0",
-  "description": "Synthetic customer simulation & product ROI testing engine. Test your product with synthetic buyers before real customers find the problems.",
+  "version": "0.2.0-rc.1",
+  "description": "Evidence-first evaluation layer for software built by humans and AI agents: synthetic buyers in real browsers, agent-run evaluation, security and eval tool evidence, offline-first.",
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
@@ -36,14 +36,21 @@
     "prepare": "npm run build"
   },
   "keywords": [
-    "synthetic-users",
-    "ux-testing",
-    "playwright",
     "ab-testing",
+    "agent-evaluation",
     "agents",
-    "mcp",
+    "ai-agents",
     "conversion",
-    "product-analytics"
+    "evaluation",
+    "evidence",
+    "llm-evals",
+    "mcp",
+    "model-router",
+    "offline-first",
+    "playwright",
+    "product-analytics",
+    "synthetic-users",
+    "ux-testing"
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.1",
