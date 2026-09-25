@@ -1,4 +1,5 @@
 import { basename, join, resolve } from 'node:path';
+import { currentLedger, type NetworkLedgerV1 } from './policy/network.js';
 import type { Analysis } from './analysis.js';
 import { ensureDir, readJson, writeFileAtomic, writeJson } from './core/fs.js';
 import type { Population, RunRecord, Task } from './core/types.js';
@@ -73,6 +74,10 @@ export interface LaunchReport {
   actions: LaunchAction[];
   users_session?: string;
   duration_ms: number;
+  /** Network policy and what was contacted while the launch check ran. */
+  network?: NetworkLedgerV1;
+  /** Always true: this is Buyer Arena's own synthetic judgement, not external validation. */
+  self_generated?: boolean;
 }
 
 export interface LaunchResult {
@@ -292,6 +297,8 @@ export async function runLaunch(o: LaunchOptions): Promise<LaunchResult> {
   const report: LaunchReport = {
     version: 1,
     id,
+    network: currentLedger().snapshot(),
+    self_generated: true,
     generated_at: new Date().toISOString(),
     name: o.name ?? (repo ? basename(repo) : (o.url ?? 'demo')),
     target: {

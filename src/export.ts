@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright';
+import { launchChromium } from './core/browser.js';
 import { ensureDir, writeFileAtomic } from './core/fs.js';
 import type { Lang } from './i18n/messages.js';
 import { PANELS } from './panels/types.js';
@@ -33,7 +33,7 @@ export async function exportLaunch(launchDir: string, o: ExportOptions): Promise
   ensureDir(out);
   const base = join(out, `buyer-arena-${scope}-${lang}`);
   const written: string[] = [];
-  const browser = await chromium.launch();
+  const browser = await launchChromium();
   try {
     const ctx = await browser.newContext({
       viewport: { width: 1280, height: 900 },

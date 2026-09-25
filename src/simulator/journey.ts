@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { classifyHost, currentLedger } from '../policy/network.js';
 import type { Browser, BrowserContext, Page } from 'playwright';
 import { checkPage, type PageCheck } from '../browser/a11y.js';
 import { observe, type ElementInfo, type Observation } from '../browser/observe.js';
@@ -112,6 +113,7 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
   // Safety: the buyer may only ever load the origin the user supplied (plus the origin the
   // start URL itself redirects to, e.g. http→https or apex→www).
   const allowed = new Set([startOrigin]);
+  const ledger = currentLedger(); // captured: Playwright callbacks run outside our async scope
   let lastAllowedUrl = o.brief.start_url;
   const thirdParty = new Set<string>();
   const pageChecks: PageCheck[] = [];
@@ -120,8 +122,12 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
   let offsiteCount = 0;
   await context.route('**/*', (route) => {
     const u = route.request().url();
-    if (u.startsWith('data:') || u.startsWith('blob:') || allowed.has(new URL(u).origin))
+    if (u.startsWith('data:') || u.startsWith('blob:')) return route.continue();
+    const url = new URL(u);
+    if (allowed.has(url.origin)) {
+      ledger.contact(url.host, classifyHost(url.hostname), 'browser');
       return route.continue();
+    }
     // Record (never load) every third-party host the page tries to call: privacy evidence.
     try {
       thirdParty.add(new URL(u).host);
@@ -215,7 +221,18 @@ export async function runJourney(o: JourneyOptions): Promise<RunRecord> {
 
   try {
     await page.goto(o.brief.start_url, { waitUntil: 'domcontentloaded', timeout: 15_000 });
+    let redirectAllowed = false;
     if (offsite && offsite !== startOrigin) {
+      try {
+        // Not "explicit": a redirect must fit the current policy (OFFLINE never follows
+        // localhost → public), it cannot escalate it.
+        ledger.check(offsite, 'browser');
+        redirectAllowed = true;
+      } catch (err) {
+        rec.add('blocked_offsite', offsite, { detail: err instanceof Error ? err.message : String(err) });
+      }
+    }
+    if (offsite && offsite !== startOrigin && redirectAllowed) {
       // The start URL itself redirected (e.g. http→https): that origin is part of the target.
       allowed.add(offsite);
       offsite = undefined;

@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { tryNetwork } from '../policy/network.js';
 import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -249,7 +250,13 @@ export async function runDevelopers(o: DevOptions): Promise<PanelResult> {
 
   // 9+ Execution in a throw-away copy (opt-in)
   const execs: Exec[] = [];
-  if (o.execute) {
+  // Installing dependencies reaches the package registry: explicit (--execute), but a strict
+  // OFFLINE/LOCAL policy still refuses it.
+  const net = o.execute
+    ? tryNetwork('https://registry.npmjs.org/', 'package-registry', { explicit: true })
+    : undefined;
+  if (net && !net.ok) o.emit({ type: 'log', panel: P, line: `execution skipped: ${net.reason}` });
+  if (o.execute && net?.ok) {
     const tmp = mkdtempSync(join(tmpdir(), 'ba-dev-'));
     try {
       o.emit({ type: 'log', panel: P, line: `copying tracked files to ${tmp}` });

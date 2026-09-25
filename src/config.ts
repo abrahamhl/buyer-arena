@@ -8,6 +8,13 @@ export const ConfigSchema = z.object({
   variants: z.record(z.string(), z.string()).optional(),
   buyer: z.string().optional(),
   auditor: z.string().optional(),
+  /** Network policy. Setting it makes the policy strict (see src/policy/network.ts). */
+  network: z
+    .object({
+      mode: z.enum(['offline', 'local', 'hybrid', 'online']).optional(),
+      allow_providers: z.array(z.string()).optional(),
+    })
+    .optional(),
   limits: z
     .object({
       max_buyers: z.number().int().positive(),

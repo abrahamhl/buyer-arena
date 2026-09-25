@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { launchChromium } from '../core/browser.js';
 import type { Population, RunRecord, Task } from '../core/types.js';
 import { runSession } from '../simulator/session.js';
 import {
@@ -152,7 +152,7 @@ export async function runSegments(o: SegOptions): Promise<PanelResult> {
   tick('No account');
 
   // 4 200% zoom (1280px screen at 200% = 640 CSS px) and a 320px phone: does content overflow?
-  const browser = await chromium.launch();
+  const browser = await launchChromium();
   let zoomScore: number | null = null;
   const zoomEv: { kind: 'url'; ref: string; excerpt: string }[] = [];
   let lang = '';

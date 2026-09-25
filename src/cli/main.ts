@@ -3,7 +3,8 @@ import { existsSync, readFileSync, accessSync, constants } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { Command, Option } from 'commander';
-import { chromium } from 'playwright';
+import { chromiumExecutable } from '../core/browser.js';
+import { enterNetworkScope, NetworkLedger, resolvePolicy } from '../policy/network.js';
 import YAML from 'yaml';
 import { analyzeSession } from '../analysis.js';
 import { loadConfig } from '../config.js';
@@ -38,7 +39,30 @@ const program = new Command();
 program
   .name('buyer-arena')
   .description('Test your product with synthetic buyers before real customers find the problems.')
-  .version(pkg.version);
+  .version(pkg.version)
+  .option(
+    '--network <mode>',
+    'network policy: offline | local | hybrid | online (default: local, escalates only for targets you name)',
+  )
+  .option('--allow-provider <id...>', 'HYBRID: model providers allowed to receive data');
+
+// Every command runs inside one network scope: its ledger records the policy, the hosts
+// contacted and the providers that received data, and is written into session artifacts.
+program.hook('preAction', () => {
+  const g = program.opts<{ network?: string; allowProvider?: string[] }>();
+  let cfgNet: { mode?: string; allow_providers?: string[] } | undefined;
+  try {
+    cfgNet = loadConfig()?.network;
+  } catch {
+    /* invalid config is reported by the command that uses it */
+  }
+  const ledger = new NetworkLedger(
+    resolvePolicy({ flag: g.network, config: cfgNet, allowProviders: g.allowProvider }),
+  );
+  ledger.onEscalate = (e) =>
+    console.error(c.yellow(`  ▲ network ${e.to.toUpperCase()}: ${e.purpose} → ${e.host} (${e.reason})`));
+  enterNetworkScope(ledger);
+});
 
 /* ───────────── shared options ───────────── */
 
@@ -563,15 +587,10 @@ program
     const [maj, min] = process.versions.node.split('.').map(Number) as [number, number];
     const nodeOk = maj > 22 || (maj === 22 && min >= 12);
     log(`\n  ${ok(nodeOk)} Node.js ${process.versions.node} ${nodeOk ? '' : c.red('(need ≥ 22.12)')}`);
-    let exe = '';
-    try {
-      exe = chromium.executablePath();
-    } catch {
-      /* not installed */
-    }
-    const hasBrowser = Boolean(exe) && existsSync(exe);
+    const chrome = chromiumExecutable();
+    const hasBrowser = chrome.exists;
     log(
-      `  ${ok(hasBrowser)} Playwright Chromium ${hasBrowser ? c.dim(exe) : c.yellow('missing → run: npx playwright install chromium')}`,
+      `  ${ok(hasBrowser)} Chromium ${hasBrowser ? c.dim(`${chrome.path}${chrome.source === 'env' ? ' (BUYER_ARENA_CHROMIUM_PATH)' : ''}`) : c.yellow('missing → run: npx playwright install chromium, or set BUYER_ARENA_CHROMIUM_PATH')}`,
     );
     let writable = true;
     try {

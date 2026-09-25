@@ -20,7 +20,7 @@ export class OpenAICompatibleProvider implements ChatProvider {
   constructor(
     readonly name: string,
     readonly model: string,
-    private readonly baseUrl: string,
+    readonly baseUrl: string,
     private readonly apiKey?: string,
     opts: { local?: boolean; pricing?: ModelPricing } = {},
   ) {
@@ -43,6 +43,7 @@ export class OpenAICompatibleProvider implements ChatProvider {
       },
       signal,
       this.paid ? 60_000 : 180_000,
+      { provider: this.name, model: this.model },
     )) as OpenAIResponse;
     return {
       text: json.choices?.[0]?.message?.content ?? '',

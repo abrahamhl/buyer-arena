@@ -1,5 +1,6 @@
 import { BudgetExceededError, ProviderError } from '../core/errors.js';
 import type { Usage } from '../core/types.js';
+import { currentLedger } from '../policy/network.js';
 import { costUsd } from './pricing.js';
 import type { ChatProvider, ChatRequest, ChatResponse } from './types.js';
 
@@ -113,7 +114,9 @@ export async function meteredComplete(
   req: ChatRequest,
   opts: { retries?: number; signal?: AbortSignal; onUsage?: (res: ChatResponse) => void } = {},
 ): Promise<ChatResponse> {
-  if (provider.paid && process.env.BUYER_ARENA_OFFLINE === '1') {
+  // OFFLINE refuses anything that costs money even if it points at a loopback relay:
+  // a local proxy in front of a paid API is still a paid API.
+  if (provider.paid && currentLedger().effectiveMode === 'offline') {
     throw new ProviderError(`offline mode: refusing paid provider ${provider.name}`, false);
   }
   const retries = opts.retries ?? 2;

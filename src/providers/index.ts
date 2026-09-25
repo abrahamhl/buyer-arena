@@ -1,4 +1,5 @@
 import { ProviderError } from '../core/errors.js';
+import { isLocalEndpoint } from '../policy/network.js';
 import { AnthropicProvider } from './anthropic.js';
 import { OpenAICompatibleProvider } from './openai-compatible.js';
 import type { ChatProvider, ModelPricing } from './types.js';
@@ -41,7 +42,7 @@ export function createProvider(spec: string, pricing?: ModelPricing): ChatProvid
       const base = env.OPENAI_BASE_URL;
       if (!base) throw new ProviderError('OPENAI_BASE_URL is not set', false);
       return new OpenAICompatibleProvider('openai-compatible', need(model), base, env.OPENAI_API_KEY, {
-        local: /localhost|127\.0\.0\.1/.test(base),
+        local: isLocalEndpoint(base),
         pricing,
       });
     }
