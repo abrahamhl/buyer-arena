@@ -2,6 +2,8 @@ import { ProviderError } from '../core/errors.js';
 import { isLocalEndpoint } from '../policy/network.js';
 import { AnthropicProvider } from './anthropic.js';
 import { OpenAICompatibleProvider } from './openai-compatible.js';
+import { OpenCodeProvider } from './opencode.js';
+import { OpenRouterProvider } from './openrouter.js';
 import type { ChatProvider, ModelPricing } from './types.js';
 
 export * from './types.js';
@@ -46,6 +48,13 @@ export function createProvider(spec: string, pricing?: ModelPricing): ChatProvid
         pricing,
       });
     }
+    case 'openrouter':
+      return new OpenRouterProvider(need(model), env.OPENROUTER_API_KEY, {
+        baseUrl: env.BUYER_ARENA_OPENROUTER_BASE_URL,
+        pricing,
+      });
+    case 'opencode':
+      return new OpenCodeProvider(need(model), { pricing });
     case 'lmstudio':
       return new OpenAICompatibleProvider(
         'lmstudio',
@@ -70,7 +79,7 @@ export function createProvider(spec: string, pricing?: ModelPricing): ChatProvid
       );
     default:
       throw new ProviderError(
-        `unknown provider "${kind}". Known: anthropic, openai, openai-compatible, lmstudio, ollama`,
+        `unknown provider "${kind}". Known: anthropic, openai, openai-compatible, openrouter, opencode, lmstudio, ollama`,
         false,
       );
   }
@@ -83,7 +92,17 @@ export function detectProviders(): { id: string; configured: boolean; note: stri
     { id: 'heuristic', configured: true, note: 'deterministic buyers + auditors (default, free, offline)' },
     { id: 'anthropic', configured: Boolean(env.ANTHROPIC_API_KEY), note: 'needs ANTHROPIC_API_KEY' },
     { id: 'openai', configured: Boolean(env.OPENAI_API_KEY), note: 'needs OPENAI_API_KEY' },
-    { id: 'openai-compatible', configured: Boolean(env.OPENAI_BASE_URL), note: 'needs OPENAI_BASE_URL' },
+    {
+      id: 'openai-compatible',
+      configured: Boolean(env.OPENAI_BASE_URL),
+      note: 'needs OPENAI_BASE_URL (vLLM, llama.cpp server, LocalAI, gateways)',
+    },
+    { id: 'openrouter', configured: Boolean(env.OPENROUTER_API_KEY), note: 'needs OPENROUTER_API_KEY' },
+    {
+      id: 'opencode',
+      configured: false,
+      note: 'optional adapter: needs the opencode CLI (see `integrations list`)',
+    },
     {
       id: 'lmstudio',
       configured: true,

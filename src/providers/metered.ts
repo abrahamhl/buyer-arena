@@ -2,6 +2,7 @@ import { BudgetExceededError, ProviderError } from '../core/errors.js';
 import type { Usage } from '../core/types.js';
 import { currentLedger } from '../policy/network.js';
 import { costUsd } from './pricing.js';
+import type { ResponseCache } from '../models/cache.js';
 import type { ChatProvider, ChatRequest, ChatResponse } from './types.js';
 
 export interface MeterLimits {
@@ -98,6 +99,17 @@ export class CostMeter {
     return next;
   }
 
+  /** Cache hits and cascade escalations, for the per-run economy report. */
+  readonly economy = { cache_hits: 0, escalations: 0 };
+
+  recordCacheHit(_provider: ChatProvider, _res: ChatResponse): void {
+    this.economy.cache_hits++;
+  }
+
+  recordEscalation(): void {
+    this.economy.escalations++;
+  }
+
   summary(): Usage[] {
     return [...this.totals.values()];
   }
@@ -112,12 +124,23 @@ export async function meteredComplete(
   provider: ChatProvider,
   meter: CostMeter,
   req: ChatRequest,
-  opts: { retries?: number; signal?: AbortSignal; onUsage?: (res: ChatResponse) => void } = {},
+  opts: {
+    retries?: number;
+    signal?: AbortSignal;
+    onUsage?: (res: ChatResponse) => void;
+    /** Exact response cache (see src/models/cache.ts). */
+    cache?: ResponseCache;
+  } = {},
 ): Promise<ChatResponse> {
   // OFFLINE refuses anything that costs money even if it points at a loopback relay:
   // a local proxy in front of a paid API is still a paid API.
   if (provider.paid && currentLedger().effectiveMode === 'offline') {
     throw new ProviderError(`offline mode: refusing paid provider ${provider.name}`, false);
+  }
+  const hit = opts.cache?.get(provider, req);
+  if (hit) {
+    meter.recordCacheHit(provider, hit);
+    return hit;
   }
   const retries = opts.retries ?? 2;
   let lastErr: unknown;
@@ -127,6 +150,7 @@ export async function meteredComplete(
     try {
       const res = await provider.complete(req, opts.signal);
       meter.record(provider, res);
+      opts.cache?.put(provider, req, res);
       opts.onUsage?.(res);
       return res;
     } catch (err) {
