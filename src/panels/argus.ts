@@ -19,6 +19,9 @@ export interface ArgusResult {
   error?: string;
   findings: ArgusFinding[];
   target?: string;
+  /** Checks Argus ran, and how many of them failed internally (no usable evidence). */
+  checks?: number;
+  errors?: number;
 }
 
 /**
@@ -41,8 +44,8 @@ export async function runArgus(argusDir: string, url: string, timeoutMs = 90_000
   writeFileSync(
     bridge,
     `const core = await import(${JSON.stringify(pathToFileURL(core).href)});
-const res = await core.runAudit({ target: process.argv[2], transport: new core.LiveTransport() });
-process.stdout.write(JSON.stringify({ target: res.target.url, findings: res.findings.map((f) => ({ id: f.findingId, title: f.title, severity: f.severity, state: f.state, summary: f.summary, fix: f.howToFix })) }));`,
+const res = await core.runAudit({ target: process.argv[2], transport: new core.LiveTransport({ requestTimeoutMs: 10000, maxBodyBytes: core.DEFAULT_LIMITS?.maxBodyBytes ?? 2000000 }) });
+process.stdout.write(JSON.stringify({ target: res.target.url, checks: res.evidence.length, errors: res.evidence.filter((e) => e.state === 'ERROR').length, findings: res.findings.map((f) => ({ id: f.findingId, title: f.title, severity: f.severity, state: f.state, summary: f.summary, fix: f.howToFix })) }));`,
   );
   try {
     const out = await new Promise<string>((resolve, reject) =>
@@ -60,8 +63,28 @@ process.stdout.write(JSON.stringify({ target: res.target.url, findings: res.find
             : resolve(stdout),
       ),
     );
-    const parsed = JSON.parse(out.slice(out.indexOf('{'))) as { target: string; findings: ArgusFinding[] };
-    return { ok: true, findings: parsed.findings, target: parsed.target };
+    const parsed = JSON.parse(out.slice(out.indexOf('{'))) as {
+      target: string;
+      checks: number;
+      errors: number;
+      findings: ArgusFinding[];
+    };
+    // An audit whose checks all failed proves nothing: report it as not run instead of "clean".
+    if (!parsed.checks || parsed.errors >= parsed.checks)
+      return {
+        ok: false,
+        error: `Argus ran ${parsed.checks} checks and all failed internally`,
+        findings: [],
+        checks: parsed.checks,
+        errors: parsed.errors,
+      };
+    return {
+      ok: true,
+      findings: parsed.findings,
+      target: parsed.target,
+      checks: parsed.checks,
+      errors: parsed.errors,
+    };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err), findings: [] };
   } finally {
