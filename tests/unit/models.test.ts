@@ -269,7 +269,14 @@ describe('budget exhaustion', () => {
 
 describe('OpenRouter provider', () => {
   it('needs a key, labels dynamic routes, records the model that actually answered', async () => {
-    expect(() => createProvider('openrouter:anthropic/claude-haiku-4.5')).toThrow(/OPENROUTER_API_KEY/);
+    const savedKey = process.env.OPENROUTER_API_KEY;
+    delete process.env.OPENROUTER_API_KEY;
+    try {
+      expect(() => createProvider('openrouter:anthropic/claude-haiku-4.5')).toThrow(/OPENROUTER_API_KEY/);
+    } finally {
+      if (savedKey === undefined) delete process.env.OPENROUTER_API_KEY;
+      else process.env.OPENROUTER_API_KEY = savedKey;
+    }
     const server = createServer((req, res) => {
       let body = '';
       req.on('data', (d) => (body += d));

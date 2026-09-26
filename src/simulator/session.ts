@@ -16,6 +16,8 @@ import type { ChatProvider } from '../providers/types.js';
 import { assertNoLeak, buildBrief, buildStory } from '../stories/story.js';
 import { HeuristicBuyer, stepBudget } from './heuristic.js';
 import { runExternalJourney } from '../engines/external.js';
+import { egressPolicy, startEgressProxy, type EgressProxy } from '../security/egress-proxy.js';
+import { assertPublicUrl, hostedMode } from '../security/net-guard.js';
 import { runJourney, type TraceMode } from './journey.js';
 import { LlmBuyer } from './llm-policy.js';
 import type { BuyerPolicy } from './policy.js';
@@ -89,6 +91,8 @@ export interface SessionManifest {
   usage: Usage[];
   /** Network policy and everything that was contacted / sent while this session ran. */
   network?: NetworkLedgerV1;
+  /** Browser egress boundary for this session (loopback / RFC1918 / metadata refused). */
+  egress?: { guard: boolean; hosted: boolean; blocked: { host: string; port: number; reason: string }[] };
   /** Cache hits and cascade escalations (token economy). */
   economy?: { cache_hits: number; escalations: number };
   routing?: RoutingDecision;
@@ -193,6 +197,14 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
       ? new ResponseCache(join(resolve(o.root ?? DEFAULT_ROOT), 'cache', 'responses'))
       : undefined;
   const ledger = currentLedger();
+  const hosted = hostedMode();
+  if (hosted) {
+    // Hosted mode: every target must be public and nothing may bypass the egress guard.
+    if (o.engineCommand)
+      throw new Error('external engines are disabled in hosted mode (they bypass the egress guard)');
+    for (const v of o.variants) await assertPublicUrl(v.url);
+  }
+  const guard = hosted || process.env.BUYER_ARENA_EGRESS_GUARD !== '0';
   for (const v of o.variants) ledger.check(v.url, 'browser', { explicit: true });
   if (o.engineCommand) {
     // A sidecar engine runs outside Buyer Arena's process and is not sandboxed: under OFFLINE
@@ -242,6 +254,7 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
   }
 
   let browserP: Promise<Browser> | undefined;
+  let proxy: EgressProxy | undefined;
   const results: RunRecord[] = [];
   let executed = 0;
   let skipped = 0;
@@ -304,7 +317,11 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
         }
         let browser: Browser;
         try {
-          browserP ??= launchChromium({ headless: !o.headed });
+          browserP ??= (async () => {
+            if (guard)
+              proxy = await startEgressProxy(egressPolicy({ explicit: o.variants.map((v) => v.url) }));
+            return launchChromium({ headless: !o.headed, args: proxy?.chromiumArgs ?? [] });
+          })();
           browser = await browserP;
         } catch (err) {
           // A browser that cannot start is fatal for the whole session, not for one buyer.
@@ -350,6 +367,8 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
   } finally {
     // mapPool resolves only after every worker returned, so no journey still uses the browser.
     if (browserP) await (await browserP.catch(() => undefined))?.close().catch(() => undefined);
+    manifest.egress = { guard, hosted, blocked: proxy?.blocked.slice(0, 50) ?? [] };
+    await proxy?.close();
     const done = results.filter(isFinal).length;
     manifest.runs_done = done;
     manifest.updated_at = new Date().toISOString();
