@@ -4,17 +4,17 @@
   --surface: #ffffff;
   --surface-2: #fbfbfd;
   --text: #1d1d1f;
-  --text-2: #6e6e73;
-  --text-3: #86868b;
+  --text-2: #5b5b60;
+  --text-3: #6a6a6f;
   --line: rgba(0, 0, 0, 0.08);
   --line-2: rgba(0, 0, 0, 0.14);
-  --accent: #0071e3;
+  --accent: #0063c7;
   --accent-soft: rgba(0, 113, 227, 0.1);
-  --good: #1f9d55;
+  --good: #157443;
   --good-soft: rgba(31, 157, 85, 0.12);
-  --bad: #e5312b;
+  --bad: #c9241e;
   --bad-soft: rgba(229, 49, 43, 0.1);
-  --warn: #c56a00;
+  --warn: #8f4d00;
   --warn-soft: rgba(255, 159, 10, 0.16);
   --base-bar: #c7c7cc;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 28px rgba(0, 0, 0, 0.05);
@@ -84,6 +84,12 @@ p {
 a {
   color: var(--accent);
   text-decoration: none;
+}
+p a,
+li a,
+.trace a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 button {
   font: inherit;

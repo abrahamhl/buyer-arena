@@ -4,7 +4,7 @@ export const STUDIO_HTML = (fontB64: string): string => `<!doctype html>
 <meta name="referrer" content="no-referrer"><title>Buyer Arena · Studio</title>
 <style>
 @font-face{font-family:'Inter';font-weight:100 900;font-display:swap;src:url(data:font/woff2;base64,${fontB64}) format('woff2')}
-:root{--bg:#f5f5f7;--surface:#fff;--line:#e8e8ed;--line-2:#d2d2d7;--text:#1d1d1f;--text-2:#6e6e73;--text-3:#86868b;--accent:#0071e3;--good:#1a7f37;--warn:#b25000;--bad:#d70015;
+:root{--bg:#f5f5f7;--surface:#fff;--line:#e8e8ed;--line-2:#d2d2d7;--text:#1d1d1f;--text-2:#5b5b60;--text-3:#6a6a6f;--accent:#0063c7;--good:#1a7f37;--warn:#b25000;--bad:#d70015;
 --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;--mono:'SF Mono',ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;
 --c-users:#0071e3;--c-developers:#5e5ce6;--c-commercial:#1a7f37;--c-security:#d70015;--c-segments:#b25000}
 @media (prefers-color-scheme:dark){:root{--bg:#000;--surface:#161618;--line:#2a2a2d;--line-2:#3a3a3d;--text:#f5f5f7;--text-2:#a1a1a6;--text-3:#86868b;--accent:#2997ff;--good:#30d158;--warn:#ff9f0a;--bad:#ff453a;
