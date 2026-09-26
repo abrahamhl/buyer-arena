@@ -1850,6 +1850,13 @@ td.skip-v {
 
 /* ───────── responsive ───────── */
 /* ───────── pricing and ROI ───────── */
+.price-hint {
+  margin: 14px 0 0;
+  font-size: 14px;
+}
+.price-hint a {
+  color: var(--text-2);
+}
 .plans {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

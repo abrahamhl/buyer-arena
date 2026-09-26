@@ -49,7 +49,7 @@ proprietary or fabricated data.
 
 ## Licence per plan
 
-Prices and plans are in [`docs/PRICING.md`](docs/PRICING.md) (proposed; nothing is on sale).
+Prices and plans are in [`docs/PRICING.md`](docs/PRICING.md) (approved 2026-09-26; nothing is on sale yet).
 
 | Plan                 | What the customer receives                         | Licence / contract                                                                                                    |
 | -------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |

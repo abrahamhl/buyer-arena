@@ -77,10 +77,10 @@ Every contract is cited in `docs/research/UPSTREAM_CONTRACTS.md`, with its unver
 
 ## Validation
 
-| Target                                         | Score                                                                             | Label                                                                                                                                                            |
-| ---------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| buyer-arena (launch-check, `--demo --execute`) | **84/100**: users 82 · developers 100 · commercial 83 · security 95 · segments 60 | SELF-AUDIT — NOT EXTERNAL VALIDATION. Web panels measure the fictional demo store; commercial reflects zero adoption                                             |
-| buyer-arena-site (prelaunch build, offline)    | **96/100**: users 88 · security 100 · segments 96                                 | SELF-AUDIT. The "pricing" check was 0 at run time (no pricing page then). A proposed-pricing section has since been added (`docs/PRICING.md`) but not re-audited |
+| Target                                         | Score                                                                             | Label                                                                                                                                     |
+| ---------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| buyer-arena (launch-check, `--demo --execute`) | **84/100**: users 82 · developers 100 · commercial 83 · security 95 · segments 60 | SELF-AUDIT — NOT EXTERNAL VALIDATION. Web panels measure the fictional demo store; commercial reflects zero adoption                      |
+| buyer-arena-site (prelaunch build, offline)    | **98/100**: users 100 · security 100 · segments 95                                | SELF-AUDIT, 2026-09-26. Was 96 with "price is findable" at 0; pricing in the navigation and a price line next to the main button fixed it |
 
 The first core run scored 72 (security 35). The gap was investigated, and the causes, not the
 scores, were fixed (see above). Reports: `docs/project/self-audit/`.

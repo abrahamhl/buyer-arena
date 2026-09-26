@@ -135,6 +135,7 @@ export const content = {
       title:
         'La capa de evaluación <em>basada en evidencia</em> para el software que crean personas y agentes IA.',
       sub: 'Mide lo que ocurre de verdad —recorridos reales en navegador, compradores sintéticos, herramientas de seguridad y de evaluación— antes de que tus usuarios encuentren los problemas. Local primero, sin atarte a ningún modelo ni proveedor.',
+      priceHint: 'Núcleo gratuito · €0 · planes cloud previstos desde €29/mes — aún no a la venta',
       cta1: 'Ejecutar en local',
       cta2: 'Ver un informe real',
       source: 'Código en GitHub',
@@ -449,7 +450,7 @@ export const content = {
     pricing: {
       title: 'Precios y licencias',
       lead: 'El núcleo es completo y gratuito. Los planes de pago cobrarán por lo que operamos nosotros —ejecuciones alojadas, retención, colaboración, cumplimiento y tiempo de personas—, nunca por lo que ejecutas tú.',
-      previewTitle: 'Precios propuestos — nada está a la venta',
+      previewTitle: 'Precios fijados — aún no hay nada a la venta',
       previewText:
         'Aún no hay empresa, ni pasarela de pago, ni servicio alojado. Estos precios son un plan publicado, no incluyen IVA y pueden cambiar antes de vender nada.',
       forever: 'para siempre',
@@ -522,7 +523,7 @@ export const content = {
         ],
       },
       discounts:
-        'Descuentos propuestos: Cloud Team gratis para proyectos de código abierto y ONG, Starter gratis para educación y 50 % el primer año para startups en fase inicial.',
+        'Descuentos: Cloud Team gratis para proyectos de código abierto y ONG, Starter gratis para educación y 50 % el primer año para startups en fase inicial.',
       source: 'Detalles, fórmulas y referencias de mercado: docs/PRICING.md en el repositorio.',
     },
     roi: {
@@ -664,6 +665,7 @@ export const content = {
     hero: {
       title: 'The <em>evidence-first</em> evaluation layer for software built by humans and AI agents.',
       sub: 'Measure what actually happens — real browser journeys, synthetic buyers, security and eval tools — before your users find the problems. Offline-first, model- and provider-agnostic.',
+      priceHint: 'Free core · €0 · cloud plans planned from €29/month — not on sale yet',
       cta1: 'Run locally',
       cta2: 'View real report',
       source: 'Source on GitHub',
@@ -956,7 +958,7 @@ export const content = {
     pricing: {
       title: 'Pricing and licences',
       lead: 'The core is complete and free. Paid plans will charge for what we operate — hosted runs, retention, collaboration, compliance and people’s time — never for what you run yourself.',
-      previewTitle: 'Proposed pricing — nothing is on sale',
+      previewTitle: 'Prices set — nothing is on sale yet',
       previewText:
         'There is no company, no payment provider and no hosted service yet. These prices are a published plan, exclude VAT and may change before anything is sold.',
       forever: 'forever',
@@ -1023,7 +1025,7 @@ export const content = {
         ],
       },
       discounts:
-        'Proposed discounts: free Cloud Team for open-source projects and non-profits, free Starter for education, 50% off the first year for early-stage startups.',
+        'Discounts: free Cloud Team for open-source projects and non-profits, free Starter for education, 50% off the first year for early-stage startups.',
       source: 'Full details, formulas and market anchors: docs/PRICING.md in the repository.',
     },
     roi: {
@@ -1162,6 +1164,7 @@ export const content = {
     hero: {
       title: 'De evaluatielaag <em>op basis van bewijs</em> voor software gebouwd door mensen en AI-agents.',
       sub: 'Meet wat er echt gebeurt — echte browsertrajecten, synthetische kopers, security- en eval-tools — voordat je gebruikers de problemen vinden. Offline eerst, onafhankelijk van model en aanbieder.',
+      priceHint: 'Gratis kern · €0 · cloudplannen gepland vanaf €29/maand — nog niet te koop',
       cta1: 'Lokaal draaien',
       cta2: 'Bekijk een echt rapport',
       source: 'Broncode op GitHub',
@@ -1457,7 +1460,7 @@ export const content = {
     pricing: {
       title: 'Prijzen en licenties',
       lead: 'De kern is compleet en gratis. Betaalde plannen rekenen voor wat wij draaien — gehoste runs, bewaartermijn, samenwerking, compliance en tijd van mensen — nooit voor wat je zelf draait.',
-      previewTitle: 'Voorgestelde prijzen — niets is te koop',
+      previewTitle: 'Prijzen vastgesteld — nog niets te koop',
       previewText:
         'Er is nog geen bedrijf, geen betaalprovider en geen gehoste dienst. Deze prijzen zijn een gepubliceerd plan, exclusief btw, en kunnen veranderen voordat er iets verkocht wordt.',
       forever: 'voor altijd',
@@ -1527,7 +1530,7 @@ export const content = {
         ],
       },
       discounts:
-        'Voorgestelde kortingen: Cloud Team gratis voor opensourceprojecten en non-profits, Starter gratis voor onderwijs en 50% korting in het eerste jaar voor startups in een vroege fase.',
+        'Kortingen: Cloud Team gratis voor opensourceprojecten en non-profits, Starter gratis voor onderwijs en 50% korting in het eerste jaar voor startups in een vroege fase.',
       source: 'Details, formules en marktankers: docs/PRICING.md in de repository.',
     },
     roi: {

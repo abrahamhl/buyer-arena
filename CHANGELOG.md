@@ -4,6 +4,12 @@
 
 ### Added
 
+- Prices approved by the project owner (2026-09-26); still nothing on sale. The site shows a price
+  line next to the main button. The site self-audit rose from 96 to 98 (end users 88 → 100, the
+  "price is findable" check); it is still a self-audit.
+- Launch pack in `docs/launch/`: a checklist split into owner-only and prepared steps, a Launch Audit
+  sales kit (ES/EN/NL outreach, delivery template) and an NLnet CodeSupply proposal draft. Nothing
+  has been sent.
 - **Proposed pricing, licences and ROI** (nothing on sale): `docs/PRICING.md` is the single source
   of truth, with Community €0 (Apache-2.0), Cloud Starter €29, Cloud Team €249, Enterprise from
   €2,500, and fixed-fee services from €1,900. It is mirrored in the README, in `LICENSE_STRATEGY.md`

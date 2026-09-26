@@ -578,6 +578,7 @@ ${nav(ctx, 'index')}
         <a class="btn btn-ghost btn-lg" href="${reportHref}">${esc(h.cta2)} ${I.arrow}</a>
         ${sourceCta(ctx, c)}
       </div>
+      <p class="price-hint"><a href="#pricing">${esc(h.priceHint)}</a></p>
     </div>
     ${heroScene(c)}
   </section>

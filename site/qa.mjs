@@ -124,9 +124,9 @@ else {
 }
 // Pricing: nothing is purchasable, prices match docs/PRICING.md, the free Apache tier is present.
 const PREVIEW = [
-  'Proposed pricing — nothing is on sale',
-  'Precios propuestos — nada está a la venta',
-  'Voorgestelde prijzen — niets is te koop',
+  'Prices set — nothing is on sale yet',
+  'Precios fijados — aún no hay nada a la venta',
+  'Prijzen vastgesteld — nog niets te koop',
 ];
 const pricingDoc = readFileSync(resolve(HERE, '..', 'docs/PRICING.md'), 'utf8');
 const { PLANS, SERVICES } = await import('./pricing.mjs');

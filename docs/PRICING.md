@@ -1,10 +1,9 @@
 # Pricing, licences and ROI
 
-> **Status: PROPOSED PRICING — NOTHING IS ON SALE.** There is no legal entity, no payment
-> provider and no hosted service yet. The open-source core is the only product that will exist
-> at public launch. Paid tiers are a published plan so users, contributors and funders can see how
-> the project intends to sustain itself. Prices are in euros, exclude VAT, and may change before
-> anything is sold. This page is the single source of truth: the website (`site/pricing.mjs`)
+> **Status: PRICES APPROVED BY THE PROJECT OWNER (2026-09-26) — NOTHING IS ON SALE YET.** There
+> is no legal entity, no payment provider and no hosted service yet. The open-source core is the only
+> product that will exist at public launch; services follow once the entity exists. Prices are in
+> euros and exclude VAT. This page is the single source of truth: the website (`site/pricing.mjs`)
 > and the README must match it, and `site/qa.mjs` fails the build if they drift.
 
 Market anchors behind every number: [`docs/research/PRICING_BENCHMARK.md`](research/PRICING_BENCHMARK.md)
@@ -30,7 +29,7 @@ comparison uses 40 journey runs.
 
 ## 2. Plans
 
-| Plan              | Price (proposed)                | Status                      | Licence / contract                                       |
+| Plan              | Price                           | Status                      | Licence / contract                                       |
 | ----------------- | ------------------------------- | --------------------------- | -------------------------------------------------------- |
 | **Community**     | **€0**, forever                 | At public launch            | Apache-2.0 (code) + [trademark policy](../TRADEMARKS.md) |
 | **Cloud Starter** | **€29 / month**                 | Planned — after launch      | Cloud Terms of Service + DPA (proprietary service)       |
@@ -78,7 +77,7 @@ For a solo builder or a small team that does not want to run browsers themselves
 Available once a legal entity exists. Delivered with the open-source tool, so every finding is
 reproducible by the customer afterwards.
 
-| Service                 | Price (proposed)      | What you get                                                                                                            |
+| Service                 | Price                 | What you get                                                                                                            |
 | ----------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | **Launch Audit**        | **€1,900**            | One product, baseline vs candidate, all five panels, security/eval adapters, written report and a 60-minute review call |
 | **Agent Benchmark**     | **from €4,900**       | Two to four AI coding agents on your repository, isolated worktrees, raw evidence, gates, recommendation                |
@@ -89,7 +88,7 @@ Anchor: one human usability round costs about $1.1k–3.3k (unmoderated) or $2.8
 all-in, including researcher hours (NN/g figures, see the benchmark §6.1). A Launch Audit is priced
 inside that envelope; it **complements** human research, it does not replace it.
 
-## 4. Discounts (proposed)
+## 4. Discounts
 
 - **Open-source projects and non-profits:** Cloud Team free (fair-use cap on runs).
 - **Students and educators:** Cloud Starter free.
@@ -155,4 +154,3 @@ Starter/Team once hosted runs are sandboxed, then Enterprise.
 2. Payment provider, Terms of Service, privacy policy and DPA reviewed by counsel.
 3. Hosted, sandboxed run infrastructure (does not exist today).
 4. Re-verify the provisional competitor prices in `PRICING_BENCHMARK.md` in a browser.
-5. Human approval of these prices by the project owner.
