@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Light theme meets WCAG 2.1 AA contrast. An axe-core scan of the demo report found 137 (Simple) and 217 (Expert) text nodes below 4.5:1 (secondary, tertiary, accent, good, bad and warn colours on their real backgrounds); all four theme × mode combinations now scan clean. Links inside running text and the trace link are underlined. `tests/unit/contrast.test.ts` guards the palette.
+
 ## 0.1.0 — 2026-09-24 (MVP)
 
 ### Added

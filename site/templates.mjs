@@ -67,6 +67,7 @@ function head(ctx, meta, page) {
   return `<head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>${esc(meta.title)}</title>
   <meta name="description" content="${esc(meta.desc)}">${noindex}
   ${canonical}
@@ -158,7 +159,7 @@ function footer(ctx, page) {
     <div>
       <a class="brand" href="${ctx.base}${pagePath(ctx.lang, 'index')}"><span class="brand-mark" aria-hidden="true">▲</span><span>Buyer Arena</span></a>
       <p class="muted foot-tag">${esc(c.footer.tagline)}</p>
-      <p class="pill good foot-privacy"><span class="dot"></span>${esc(c.footer.privacy)}</p>
+      <p class="foot-privacy-wrap"><a class="pill good foot-privacy" href="${ctx.base}${ctx.lang || 'en'}/#safety" rel="privacy-policy"><span class="dot"></span>${esc(c.footer.privacy)}</a></p>
     </div>
     <ul class="foot-links">
       <li><a href="${REPO}" rel="noopener">${I.github}${esc(c.footer.github)}</a></li>

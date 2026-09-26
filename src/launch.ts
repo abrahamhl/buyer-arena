@@ -87,6 +87,7 @@ export async function runLaunch(o: LaunchOptions): Promise<LaunchResult> {
   const t0 = Date.now();
   const emit: Emit = o.emit ?? (() => undefined);
   const id = o.id ?? `launch-${newSessionId()}`;
+  if (!/^[A-Za-z0-9][\w.-]{0,80}$/.test(id) || id.includes('..')) throw new Error(`invalid launch id: ${id}`);
   const root = resolve(o.root ?? DEFAULT_ROOT);
   const dir = join(root, 'launch', id);
   ensureDir(dir);

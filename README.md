@@ -10,8 +10,10 @@ you can compare two versions of your product with the same buyers.
 
 [![CI](https://img.shields.io/badge/CI-GitHub_Actions-2d5bff)](.github/workflows/ci.yml)
 ![License](https://img.shields.io/badge/license-Apache--2.0-4fe0c0)
-![Node](https://img.shields.io/badge/node-%E2%89%A520-93a4b8)
+![Node](https://img.shields.io/badge/node-%E2%89%A522.12-93a4b8)
 ![Paid APIs needed](https://img.shields.io/badge/paid%20APIs%20needed-none-4fe08f)
+
+[Website](https://abrahamhl.github.io/buyer-arena-site/) · [Run from your phone](.github/workflows/launch-check.yml)
 
 </div>
 
@@ -117,6 +119,36 @@ Or scaffold a config with `buyer-arena init` and then run `buyer-arena compare -
 | `calibrate <aggregates>`         | Simulated funnel vs. **aggregate** real funnel, per-stage error                            |
 | `mcp`                            | MCP server for Claude Code, Cursor, Codex and other clients                                |
 | `init` · `doctor` · `demo-store` | Scaffold config · check environment · serve the demo app by hand                           |
+
+## Launch check: five audiences, one report
+
+Before a launch you need more than conversion. `launch-check` runs five synthetic panels and
+gives every check a 0–100 score and 0–5 stars, with the evidence behind it:
+
+| Panel          | Question it answers                                                                                                               |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **End users**  | Do customers reach the goal, and where are they lost?                                                                             |
+| **Developers** | Can a developer get it running from the README? (`--execute` runs it)                                                             |
+| **Investors**  | Which business model does the evidence support? Virality, strategic interest, adoption                                            |
+| **Red team**   | Secrets, supply chain, CI injection, prompt injection in files agents read, MCP tool risks, privacy; risk index and AI-agent risk |
+| **Segments**   | Accessibility, slow network, no-account visitors, 200% zoom, other languages, mobile                                              |
+
+```bash
+buyer-arena launch-check --repo . --demo --execute              # everything, bundled demo as the website
+buyer-arena launch-check --repo . --url https://your-site.example \
+  --mix users=30,developers=10,investors=40,security=10,segments=10 --depth deep --export pdf,md,csv
+buyer-arena export --panel investors --format pdf,png --lang es  # one panel, or the action plan
+buyer-arena studio                                               # sliders, live progress and commands, 127.0.0.1 only
+```
+
+The **attention mix** decides how many synthetic participants each panel gets and how deep it
+goes; a panel at 0% is skipped. Open critical threats cap the red-team score, so one serious hole
+never hides behind clean averages. Reports are fully translated (ES · EN · NL) and export to
+CSV, Markdown, JSON, PDF, PNG and JPG, for the whole report, one panel or the action plan.
+
+**From your phone:** GitHub app → Actions → _Launch check_ → Run workflow. The stars appear in the
+run summary and the full report is attached as an artifact. The workflow has a read-only token,
+passes inputs through environment variables and pins every action by commit.
 
 ## How it works
 
