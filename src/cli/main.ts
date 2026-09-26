@@ -702,6 +702,7 @@ program
   .option('--template <name>', 'population template', 'saas')
   .option('--seed <n>', 'random seed', '42')
   .option('--name <name>', 'product name shown in the report')
+  .option('--id <id>', 'folder name for this launch report (default: timestamp)')
   .option('--export <formats>', 'also export, e.g. md,csv,pdf,png')
   .addOption(new Option('--lang <l>', 'language for exports').choices(['es', 'en', 'nl']).default('en'))
   .option('--no-dashboard', 'plain log lines instead of the live dashboard')
@@ -737,6 +738,7 @@ program
         template: String(f.template),
         seed: Number(f.seed),
         name: s('name'),
+        id: s('id'),
         emit: dash.emit,
         signal: ac.signal,
       });

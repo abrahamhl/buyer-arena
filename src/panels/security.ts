@@ -316,7 +316,16 @@ export async function runSecurity(o: SecOptions): Promise<PanelResult> {
     o.emit({ type: 'log', panel: P, line: `argus audit ${o.url}` });
     const a = await runArgus(o.argus, o.url);
     if (a.ok) {
-      const w: Record<string, number> = { critical: 30, high: 15, medium: 7, low: 2, info: 0 };
+      // Argus severities: critical · review · informational (plus classic high/medium/low).
+      const w: Record<string, number> = {
+        critical: 30,
+        high: 15,
+        review: 6,
+        medium: 6,
+        low: 2,
+        informational: 1,
+        info: 1,
+      };
       const pen = a.findings.reduce((s, f) => s + (w[f.severity] ?? 3), 0);
       checks.push(
         check(
@@ -332,7 +341,11 @@ export async function runSecurity(o: SecOptions): Promise<PanelResult> {
           { findings: a.findings.length },
         ),
       );
-      threat('web_surface', a.findings.filter((f) => /critical|high|medium/.test(f.severity)).length, false);
+      threat(
+        'web_surface',
+        a.findings.filter((f) => /critical|high|medium|review/.test(f.severity)).length,
+        false,
+      );
     } else {
       o.emit({ type: 'log', panel: P, line: `argus skipped: ${a.error}` });
       checks.push(check(P, 'sec.web', null, 3, [], { findings: 0 }));
