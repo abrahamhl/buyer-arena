@@ -404,6 +404,26 @@ and reports. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - [ ] Hosted, sandboxed execution for repository URLs
 - [ ] Multi-page task suites (onboarding, upgrade, cancellation)
 
+## Pricing & licences
+
+> **Proposed pricing — nothing is on sale.** There is no legal entity, payment provider or hosted
+> service yet. Full details, formulas and market anchors: [docs/PRICING.md](docs/PRICING.md).
+
+| Plan          | Price (proposed, excl. VAT) | Status                      | Licence / contract                             |
+| ------------- | --------------------------- | --------------------------- | ---------------------------------------------- |
+| Community     | **€0**, forever             | at public launch            | Apache-2.0 + [trademark policy](TRADEMARKS.md) |
+| Cloud Starter | **€29 / month**             | planned                     | Cloud Terms of Service + DPA                   |
+| Cloud Team    | **€249 / month**            | planned                     | Cloud Terms of Service + DPA                   |
+| Enterprise    | **from €2,500 / month**     | planned                     | commercial licence for add-ons + MSA + DPA     |
+| Services      | **from €1,900** fixed fee   | after a legal entity exists | services agreement                             |
+
+- The core is complete and free: nothing that runs on your machine or your own CI moves to a paid tier.
+- Paid tiers charge for what we operate (hosted journey runs, retention, collaboration, compliance,
+  people's time), with unlimited users. Model tokens are never hidden inside the price.
+- **ROI:** research spend avoided + conversion recovered (lower bound × confidence) + engineering time
+  saved + model spend avoided + better agent choice, minus cost. Worked, clearly illustrative example
+  in [docs/PRICING.md §6](docs/PRICING.md#6-roi-for-customers--how-to-calculate-it-yourself).
+
 ## Contributing & license
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). The project is licensed under Apache-2.0; the reasoning is in

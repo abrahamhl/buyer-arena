@@ -30,6 +30,13 @@ version 0.2.0-rc.1 (not published). Suite: 164 passed, 1 opt-in skipped.
 
 RC complete. Site redesign committed; site build on abrahamhl/buyer-arena-site#1 (draft, not merged). Self-audits in `docs/project/self-audit/`. Final summary: `RC_FINAL_REPORT.md`. Suite 166 passed + 1 opt-in.
 
+## Pricing and funding (2026-09-26)
+
+Proposed pricing in `docs/PRICING.md`, mirrored in `site/pricing.mjs` (with a QA drift check),
+README and `LICENSE_STRATEGY.md`. A conditional funding plan is in `docs/project/FUNDING_PLAN.md`.
+Nothing is on sale and nothing has been sent. The owner has to approve the prices; blockers are the
+entity, payments and hosted infrastructure.
+
 ## Decisions
 
 - Default network policy is LOCAL, non-strict: escalates only for targets named on the

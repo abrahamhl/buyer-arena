@@ -46,3 +46,17 @@ workflow adoption. Any future proprietary calibration dataset or hosted calibrat
 live **outside** this Apache-2.0 repository and connect through the same aggregate-only
 calibration input and Evidence Protocol that anyone can use. This repository contains no
 proprietary or fabricated data.
+
+## Licence per plan
+
+Prices and plans are in [`docs/PRICING.md`](docs/PRICING.md) (proposed; nothing is on sale).
+
+| Plan                 | What the customer receives                         | Licence / contract                                                                                                    |
+| -------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Community (€0)       | This repository                                    | **Apache-2.0**; name and ▲ mark under [`TRADEMARKS.md`](TRADEMARKS.md)                                                |
+| Cloud Starter / Team | Access to a hosted service, not a copy of its code | **Cloud Terms of Service + Data Processing Agreement**; hosted code is proprietary and lives in a separate repository |
+| Enterprise           | Hosted or self-hosted enterprise add-ons           | **Commercial licence** for the add-ons (or FSL if source-available) + MSA + DPA; the core stays Apache-2.0            |
+| Services             | Work performed, report delivered                   | **Services agreement / statement of work**                                                                            |
+| Reports and evidence | Everything a run produces about your product       | **Owned by the customer**, whatever the plan                                                                          |
+
+No plan changes the licence of code already released under Apache-2.0.

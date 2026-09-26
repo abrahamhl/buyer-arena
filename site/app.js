@@ -390,6 +390,42 @@
     if (checked) apply(checked.value, false);
   })();
 
+  /* ROI calculator — mirrors roi() in site/pricing.mjs and docs/PRICING.md §6. The HTML already
+     shows the worked example; this only recomputes when inputs change. Nothing leaves the page. */
+  (function roiCalc() {
+    var f = document.getElementById('roiForm');
+    if (!f) return;
+    var locale = f.getAttribute('data-locale') || 'en';
+    var eur = new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+    var pct = new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 0 });
+    function num(k) {
+      var v = parseFloat(f.elements[k].value);
+      return isFinite(v) && v > 0 ? v : 0;
+    }
+    function set(k, v) {
+      var el = document.getElementById('roi-out-' + k);
+      if (el) el.textContent = v;
+    }
+    function update() {
+      var conf = Math.min(num('confidence'), 1);
+      var a = num('rounds') * num('roundCost');
+      var b = num('visitors') * (num('uplift') / 100) * num('value') * 12 * conf;
+      var c = num('hours') * num('rate');
+      var cost = num('plan') * 12;
+      var net = a + b + c - cost;
+      set('a', eur.format(a));
+      set('b', eur.format(b));
+      set('c', eur.format(c));
+      set('cost', eur.format(-cost));
+      set('net', eur.format(net));
+      set('ratio', cost > 0 ? pct.format(net / cost) : '\u2014');
+    }
+    f.addEventListener('input', update);
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+    });
+  })();
+
   /* run builder — mirrors src/panels/mix.ts (normalise, allocate, estimateSeconds) */
   var form = document.getElementById('builder');
   if (!form) return;

@@ -12,6 +12,7 @@ import {
   DEMO_FACTS,
   content,
 } from './content.mjs';
+import { PLANS, SERVICES, ROI_DEFAULTS, roi } from './pricing.mjs';
 
 export const esc = (s) =>
   String(s).replace(
@@ -171,6 +172,7 @@ function nav(ctx, page) {
     ['integrations', c.nav.integrations],
     ['offline', c.nav.offline],
     ['limits', c.nav.limits],
+    ['pricing', c.nav.pricing],
     ['quickstart', c.nav.quickstart],
   ];
   const links = items.map(([id, t]) => `<a href="${pre}#${id}">${esc(t)}</a>`).join('');
@@ -378,6 +380,104 @@ function boundary(c) {
   </div>`;
 }
 
+function euros(locale, n) {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+function pricingSection(ctx, c) {
+  const p = c.pricing;
+  const L = c.locale;
+  const pub = isPublic(ctx);
+  const plans = PLANS.map((pl) => {
+    const it = p.plans[pl.key];
+    const price = `${pl.from ? `<span class="from">${esc(p.from)}</span> ` : ''}<span class="amount">${esc(euros(L, pl.price))}</span> <span class="per">${esc(pl.unit === 'forever' ? p.forever : p.perMonth)}</span>`;
+    const quota = pl.runs
+      ? `<p class="quota">${esc(p.runs.replace('{runs}', new Intl.NumberFormat(L).format(pl.runs)))}<br><span class="dim">${esc(p.over.replace('{price}', euros(L, pl.over)))}</span></p>`
+      : '';
+    const cta =
+      pl.key === 'community' && pub
+        ? `<a class="btn btn-primary" href="#quickstart">${esc(c.hero.cta1)}</a>`
+        : '';
+    return `<article class="card plan plan-${pl.key}" aria-labelledby="plan-${pl.key}">
+        <div class="plan-top"><h3 id="plan-${pl.key}">${esc(it.name)}</h3><span class="badge b-${pl.status === 'launch' ? 'built' : 'planned'}">${esc(p.status[pl.status])}</span></div>
+        <p class="who">${esc(it.who)}</p>
+        <p class="price">${price}</p>
+        ${quota}
+        <ul class="ticks">${it.points.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+        <p class="lic"><span class="dim">${esc(p.licenceLabel)}:</span> ${esc(p.licences[pl.licence])}</p>
+        ${cta}
+      </article>`;
+  }).join('\n      ');
+  const services = SERVICES.map((sv) => {
+    const [name, desc] = p.services[sv.key];
+    return `<li><div><h3 class="h3-sm">${esc(name)}</h3><p class="muted">${esc(desc)}</p></div><p class="svc-price">${sv.from ? `${esc(p.from)} ` : ''}${esc(euros(L, sv.price))}${sv.unit === 'month' ? ` ${esc(p.perMonth)}` : ''}</p></li>`;
+  }).join('');
+  return `<section id="pricing" aria-labelledby="h-pricing">
+    <div class="sec-head"><h2 id="h-pricing">${esc(p.title)}</h2><p>${esc(p.lead)}</p></div>
+    <div class="soon preview" role="note"><span class="ic warn-ic">${I.alert}</span><div><p class="soon-t">${esc(p.previewTitle)}</p><p>${esc(p.previewText)}</p></div></div>
+    <div class="plans">
+      ${plans}
+    </div>
+    <p class="disclaimer">${esc(p.unit)}</p>
+    <div class="card pad services">
+      <h3 class="h3-sm">${esc(p.servicesTitle)}</h3>
+      <p class="muted">${esc(p.servicesLead)}</p>
+      <ul class="svc">${services}</ul>
+    </div>
+    <p class="disclaimer">${esc(p.discounts)} ${esc(p.source)}</p>
+  </section>`;
+}
+
+function roiSection(c) {
+  const r = c.roi;
+  const L = c.locale;
+  const d = ROI_DEFAULTS;
+  const res = roi(d);
+  const steps = { uplift: '0.01', confidence: '0.05' };
+  const max = { confidence: '1' };
+  const fields = Object.keys(r.fields)
+    .map(
+      (k) =>
+        `<label class="rf"><span>${esc(r.fields[k])}</span><input type="number" inputmode="decimal" id="roi-${k}" name="${k}" value="${d[k]}" min="0"${max[k] ? ` max="${max[k]}"` : ''} step="${steps[k] || '1'}"></label>`,
+    )
+    .join('');
+  const out = [
+    ['a', res.a],
+    ['b', res.b],
+    ['c', res.c],
+    ['cost', -res.cost],
+    ['net', res.net, 'total'],
+  ]
+    .map(
+      ([k, v, cls]) =>
+        `<div${cls ? ` class="${cls}"` : ''}><dt>${esc(r.out[k])}</dt><dd id="roi-out-${k}">${esc(euros(L, v))}</dd></div>`,
+    )
+    .join('');
+  const ratio =
+    res.ratio === null
+      ? '—'
+      : new Intl.NumberFormat(L, { style: 'percent', maximumFractionDigits: 0 }).format(res.ratio);
+  return `<section id="roi" aria-labelledby="h-roi">
+    <div class="sec-head"><h2 id="h-roi">${esc(r.title)}</h2><p>${esc(r.lead)}</p></div>
+    <ol class="roi-paths">${r.paths.map(([t, x], i) => `<li class="card"><span class="flow-n" aria-hidden="true">${String.fromCharCode(65 + i)}</span><div><h3 class="h3-sm">${esc(t)}</h3><p class="muted">${esc(x)}</p></div></li>`).join('')}</ol>
+    <div class="card pad roi-calc">
+      <h3 class="h3-sm">${esc(r.calcTitle)}</h3>
+      <div class="roi-grid">
+        <form id="roiForm" class="roi-fields" data-locale="${esc(L)}" novalidate>${fields}</form>
+        <div class="roi-out" aria-live="polite">
+          <dl>${out}<div class="total"><dt>${esc(r.out.ratio)}</dt><dd id="roi-out-ratio">${esc(ratio)}</dd></div></dl>
+          <p class="dim">${esc(r.perYear)}</p>
+        </div>
+      </div>
+      <p class="note"><span class="dot" aria-hidden="true"></span>${esc(r.note)}</p>
+    </div>
+  </section>`;
+}
+
 export function indexPage(ctx) {
   const lang = ctx.lang || 'en';
   const c = content[lang];
@@ -572,6 +672,10 @@ ${steps}
       </div>
     </div>
   </section>
+
+  ${pricingSection(ctx, c)}
+
+  ${roiSection(c)}
 
   <section id="safety" aria-labelledby="h-safety">
     <div class="sec-head"><h2 id="h-safety">${esc(c.safety.title)}</h2><p>${esc(c.safety.lead)}</p></div>

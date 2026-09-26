@@ -122,6 +122,33 @@ else {
   for (const m of h.matchAll(/<(?:script|img|link)[^>]*\s(?:src|href)="((?:https?:)?\/\/[^"]+)"/g))
     sp('report/demo/report.html', `external asset ${m[1]}`);
 }
+// Pricing: nothing is purchasable, prices match docs/PRICING.md, the free Apache tier is present.
+const PREVIEW = [
+  'Proposed pricing — nothing is on sale',
+  'Precios propuestos — nada está a la venta',
+  'Voorgestelde prijzen — niets is te koop',
+];
+const pricingDoc = readFileSync(resolve(HERE, '..', 'docs/PRICING.md'), 'utf8');
+const { PLANS, SERVICES } = await import('./pricing.mjs');
+for (const x of [...PLANS, ...SERVICES])
+  if (!pricingDoc.includes(`€${x.price.toLocaleString('en-US')}`))
+    sp('site/pricing.mjs', `${x.key} €${x.price} is not in docs/PRICING.md`);
+for (const l of ['es', 'en', 'nl']) {
+  const f = join(DIST, l, 'index.html');
+  if (!existsSync(f)) continue;
+  const h = read(f);
+  const sec = /<section id="pricing"[\s\S]*?<\/section>/.exec(h)?.[0];
+  if (!sec) {
+    sp(`${l}/index.html`, 'pricing section missing');
+    continue;
+  }
+  if (!PREVIEW.some((x) => sec.includes(x))) sp(`${l}/index.html`, 'pricing is not labelled as not on sale');
+  if (!sec.includes('Apache-2.0')) sp(`${l}/index.html`, 'free Apache-2.0 tier missing from pricing');
+  if (/mailto:|checkout|stripe|paypal|href="https?:/i.test(sec))
+    sp(`${l}/index.html`, 'pricing section has a purchase, contact or external link');
+  if (launchState === 'prelaunch' && /<a\b/.test(sec))
+    sp(`${l}/index.html`, 'prelaunch pricing section has a call to action');
+}
 if (existsSync(join(DIST, 'report/index.html'))) {
   const text = read(join(DIST, 'report/index.html'));
   if (/95\s*\/\s*100/.test(text) && !/self-audit|autoauditor|zelfaudit/i.test(text))
@@ -386,6 +413,12 @@ try {
       const txt = await page.textContent('#sceneBtn');
       if (!/play|replay/i.test(txt)) add(where, `pause button did not toggle: ${txt}`);
     }
+    // ROI calculator: default = the worked example in docs/PRICING.md; inputs recompute it.
+    const roi0 = await page.textContent('#roi-out-ratio');
+    if (roi0.replace(/\s/g, '') !== '168%') add(where, `ROI default is ${roi0}, expected 168%`);
+    await page.fill('#roi-uplift', '0');
+    const roi1 = await page.textContent('#roi-out-net');
+    if (!/212/.test(roi1)) add(where, `ROI did not recompute (net ${roi1}, expected €212)`);
     // Network-mode switcher updates the boundary diagram.
     await page.check('input[name="netmode"][value="offline"]', { force: true });
     const blocked = await page.evaluate(() =>

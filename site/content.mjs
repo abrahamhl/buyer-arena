@@ -119,6 +119,7 @@ export const content = {
       integrations: 'Integraciones',
       offline: 'Local primero',
       limits: 'Limitaciones',
+      pricing: 'Precios',
       quickstart: 'Ejecutar en local',
       run: 'Configurador',
       theme: 'Cambiar entre tema claro y oscuro',
@@ -445,6 +446,127 @@ export const content = {
         ['Un solo archivo', 'El informe es un HTML que funciona sin conexión.'],
       ],
     },
+    pricing: {
+      title: 'Precios y licencias',
+      lead: 'El núcleo es completo y gratuito. Los planes de pago cobrarán por lo que operamos nosotros —ejecuciones alojadas, retención, colaboración, cumplimiento y tiempo de personas—, nunca por lo que ejecutas tú.',
+      previewTitle: 'Precios propuestos — nada está a la venta',
+      previewText:
+        'Aún no hay empresa, ni pasarela de pago, ni servicio alojado. Estos precios son un plan publicado, no incluyen IVA y pueden cambiar antes de vender nada.',
+      forever: 'para siempre',
+      perMonth: '/ mes',
+      from: 'desde',
+      licenceLabel: 'Licencia',
+      status: { launch: 'EN EL LANZAMIENTO PÚBLICO', planned: 'PLANIFICADO' },
+      licences: {
+        apache: 'Apache-2.0 + política de marca',
+        cloud: 'Términos cloud + acuerdo de tratamiento de datos',
+        commercial: 'Licencia comercial de complementos + MSA',
+      },
+      runs: '{runs} recorridos / mes incluidos',
+      over: 'después, {price} por cada 100 recorridos',
+      plans: {
+        community: {
+          name: 'Community',
+          who: 'Para todo el mundo',
+          points: [
+            'Los cinco paneles, Studio, MCP, agent-eval y todas las integraciones',
+            'Modelos locales o con tu propia clave; ejecuciones ilimitadas en tu máquina o CI',
+            'Soporte de la comunidad en GitHub',
+          ],
+        },
+        starter: {
+          name: 'Cloud Starter',
+          who: 'Personas y equipos pequeños',
+          points: [
+            'Navegadores alojados, 3 proyectos, 30 días de retención',
+            'Informes compartibles, usuarios ilimitados',
+          ],
+        },
+        team: {
+          name: 'Cloud Team',
+          who: 'Equipos de producto e ingeniería',
+          points: [
+            'Puerta de PR para repositorios privados, historial de benchmarks de agentes',
+            'Espacio de calibración, 1 año de retención, soporte por email',
+          ],
+        },
+        enterprise: {
+          name: 'Enterprise',
+          who: 'Organizaciones grandes o reguladas',
+          points: [
+            'SSO/SAML, SCIM, registros de auditoría, residencia de datos en la UE',
+            'Plano de control autoalojado o en VPC, SLA, contrato anual',
+          ],
+        },
+      },
+      unit: 'Un recorrido es un comprador sintético intentando un recorrido en una versión. Comparar antes/después con 20 compradores usa 40. Los tokens de los modelos nunca van escondidos en el precio.',
+      servicesTitle: 'Servicios a precio cerrado',
+      servicesLead:
+        'Hechos con la herramienta de código abierto, para que puedas reproducir cada hallazgo después. Disponibles cuando exista la empresa.',
+      services: {
+        audit: [
+          'Auditoría de lanzamiento',
+          'Un producto, antes y después, los cinco paneles, informe escrito y una llamada de revisión.',
+        ],
+        agents: [
+          'Benchmark de agentes',
+          'De dos a cuatro agentes de programación con IA sobre tu repositorio, con la evidencia en bruto.',
+        ],
+        calibration: [
+          'Puesta en marcha de calibración',
+          'Conecta tus analíticas agregadas y recibe tu primer informe de calibración.',
+        ],
+        support: [
+          'Soporte autoalojado',
+          'Contrato de soporte para equipos que usan el núcleo abierto en producción.',
+        ],
+      },
+      discounts:
+        'Descuentos propuestos: Cloud Team gratis para proyectos de código abierto y ONG, Starter gratis para educación y 50 % el primer año para startups en fase inicial.',
+      source: 'Detalles, fórmulas y referencias de mercado: docs/PRICING.md en el repositorio.',
+    },
+    roi: {
+      title: 'Calcula tu retorno',
+      lead: 'Cinco maneras en que Buyer Arena puede pagarse sola. La calculadora usa la fórmula de nuestro documento de precios; cambia los números por los tuyos.',
+      paths: [
+        ['Gasto en investigación evitado', 'Rondas de usabilidad que ya no necesitas en cada versión.'],
+        [
+          'Conversión recuperada',
+          'Fricción encontrada antes del lanzamiento, contada en el límite inferior y por un factor de confianza.',
+        ],
+        ['Tiempo de ingeniería ahorrado', 'Caza de regresiones y QA manual que no tuviste que hacer.'],
+        [
+          'Gasto en modelos evitado',
+          'Caché exacta, enrutado y modelos locales; cada ejecución informa de su economía de tokens.',
+        ],
+        [
+          'Mejor elección de agente',
+          'Elige el agente de programación con IA cuyos cambios pasan de verdad tus puertas.',
+        ],
+      ],
+      calcTitle: 'Calculadora de ROI — ilustrativa',
+      fields: {
+        rounds: 'Rondas de usabilidad evitadas al año',
+        roundCost: 'Coste total por ronda (€)',
+        visitors: 'Visitantes al mes',
+        uplift: 'Mejora real de conversión (puntos porcentuales)',
+        value: 'Valor por conversión (€)',
+        confidence: 'Factor de confianza (0–1)',
+        hours: 'Horas de ingeniería ahorradas al año',
+        rate: 'Coste por hora (€)',
+        plan: 'Coste de Buyer Arena al mes (€)',
+      },
+      out: {
+        a: 'Gasto en investigación evitado',
+        b: 'Conversión recuperada',
+        c: 'Tiempo de ingeniería ahorrado',
+        cost: 'Coste de Buyer Arena',
+        net: 'Neto al año',
+        ratio: 'Retorno sobre el coste',
+      },
+      perYear: 'al año',
+      note: 'Ilustrativo, no es un resultado de cliente. Buyer Arena mide una aproximación a la conversión, no ingresos; mientras una ejecución esté SIN CALIBRAR, mantén el factor de confianza en 0,5 o menos. El gasto en modelos y la elección de agente no entran en la calculadora.',
+    },
     selfAudit: {
       label: 'AUTOAUDITORÍA — NO ES UNA VALIDACIÓN EXTERNA',
       title: 'Buyer Arena sobre sí mismo',
@@ -527,6 +649,7 @@ export const content = {
       integrations: 'Integrations',
       offline: 'Offline first',
       limits: 'Limitations',
+      pricing: 'Pricing',
       quickstart: 'Run locally',
       run: 'Run builder',
       theme: 'Switch between light and dark theme',
@@ -830,6 +953,118 @@ export const content = {
         ['One file', 'The report is a single HTML file that works offline.'],
       ],
     },
+    pricing: {
+      title: 'Pricing and licences',
+      lead: 'The core is complete and free. Paid plans will charge for what we operate — hosted runs, retention, collaboration, compliance and people’s time — never for what you run yourself.',
+      previewTitle: 'Proposed pricing — nothing is on sale',
+      previewText:
+        'There is no company, no payment provider and no hosted service yet. These prices are a published plan, exclude VAT and may change before anything is sold.',
+      forever: 'forever',
+      perMonth: '/ month',
+      from: 'from',
+      licenceLabel: 'Licence',
+      status: { launch: 'AT PUBLIC LAUNCH', planned: 'PLANNED' },
+      licences: {
+        apache: 'Apache-2.0 + trademark policy',
+        cloud: 'Cloud terms + data processing agreement',
+        commercial: 'Commercial licence for add-ons + MSA',
+      },
+      runs: '{runs} journey runs / month included',
+      over: 'then {price} per 100 runs',
+      plans: {
+        community: {
+          name: 'Community',
+          who: 'Everyone',
+          points: [
+            'All five panels, Studio, MCP, agent-eval and every integration',
+            'Local or bring-your-own models; unlimited runs on your machine or CI',
+            'Community support on GitHub',
+          ],
+        },
+        starter: {
+          name: 'Cloud Starter',
+          who: 'Solo builders and small teams',
+          points: ['Hosted browsers, 3 projects, 30-day retention', 'Shareable reports, unlimited users'],
+        },
+        team: {
+          name: 'Cloud Team',
+          who: 'Product and engineering teams',
+          points: [
+            'PR gate for private repositories, agent benchmark history',
+            'Calibration workspace, 1-year retention, email support',
+          ],
+        },
+        enterprise: {
+          name: 'Enterprise',
+          who: 'Regulated and larger organisations',
+          points: [
+            'SSO/SAML, SCIM, audit logs, EU data residency',
+            'Self-hosted or VPC control plane, SLA, annual contract',
+          ],
+        },
+      },
+      unit: 'A journey run is one synthetic buyer attempting one journey on one version. A 20-buyer before/after comparison uses 40. Model tokens are never hidden in the price.',
+      servicesTitle: 'Services, fixed fee',
+      servicesLead:
+        'Done with the open-source tool, so you can reproduce every finding afterwards. Available once the company exists.',
+      services: {
+        audit: [
+          'Launch Audit',
+          'One product, before vs after, all five panels, written report and a review call.',
+        ],
+        agents: ['Agent Benchmark', 'Two to four AI coding agents on your repository, with raw evidence.'],
+        calibration: [
+          'Calibration Setup',
+          'Connect your aggregate analytics and get your first calibration report.',
+        ],
+        support: [
+          'Self-hosted support',
+          'A support contract for teams running the open-source core in production.',
+        ],
+      },
+      discounts:
+        'Proposed discounts: free Cloud Team for open-source projects and non-profits, free Starter for education, 50% off the first year for early-stage startups.',
+      source: 'Full details, formulas and market anchors: docs/PRICING.md in the repository.',
+    },
+    roi: {
+      title: 'Work out your return',
+      lead: 'Five ways Buyer Arena can pay for itself. The calculator uses the formula from our pricing document; change the numbers to yours.',
+      paths: [
+        ['Research spend avoided', 'Usability rounds you no longer need to run for every release.'],
+        [
+          'Conversion recovered',
+          'Friction found before launch — counted at the lower bound, times a confidence factor.',
+        ],
+        ['Engineering time saved', 'Regression hunting and manual QA you did not have to do.'],
+        [
+          'Model spend avoided',
+          'Exact cache, routing and local models; every run reports its token economy.',
+        ],
+        ['Better agent choice', 'Pick the AI coding agent whose changes actually pass your gates.'],
+      ],
+      calcTitle: 'ROI calculator — illustrative',
+      fields: {
+        rounds: 'Usability rounds avoided per year',
+        roundCost: 'All-in cost per round (€)',
+        visitors: 'Visitors per month',
+        uplift: 'Real conversion uplift (percentage points)',
+        value: 'Value per conversion (€)',
+        confidence: 'Confidence factor (0–1)',
+        hours: 'Engineering hours saved per year',
+        rate: 'Loaded cost per hour (€)',
+        plan: 'Buyer Arena cost per month (€)',
+      },
+      out: {
+        a: 'Research spend avoided',
+        b: 'Conversion recovered',
+        c: 'Engineering time saved',
+        cost: 'Buyer Arena cost',
+        net: 'Net per year',
+        ratio: 'Return on cost',
+      },
+      perYear: 'per year',
+      note: 'Illustrative, not a customer result. Buyer Arena measures a conversion proxy, not revenue; while a run is UNCALIBRATED keep the confidence factor at 0.5 or lower. Model spend and agent choice are left out of the calculator.',
+    },
     selfAudit: {
       label: 'SELF-AUDIT — NOT EXTERNAL VALIDATION',
       title: 'Buyer Arena on itself',
@@ -912,6 +1147,7 @@ export const content = {
       integrations: 'Integraties',
       offline: 'Offline eerst',
       limits: 'Beperkingen',
+      pricing: 'Prijzen',
       quickstart: 'Lokaal draaien',
       run: 'Configurator',
       theme: 'Wisselen tussen licht en donker thema',
@@ -1217,6 +1453,121 @@ export const content = {
         ['Tests kosten niets', 'De testsuite doet nul aanroepen naar betaalde API’s.'],
         ['Eén bestand', 'Het rapport is één HTML-bestand dat offline werkt.'],
       ],
+    },
+    pricing: {
+      title: 'Prijzen en licenties',
+      lead: 'De kern is compleet en gratis. Betaalde plannen rekenen voor wat wij draaien — gehoste runs, bewaartermijn, samenwerking, compliance en tijd van mensen — nooit voor wat je zelf draait.',
+      previewTitle: 'Voorgestelde prijzen — niets is te koop',
+      previewText:
+        'Er is nog geen bedrijf, geen betaalprovider en geen gehoste dienst. Deze prijzen zijn een gepubliceerd plan, exclusief btw, en kunnen veranderen voordat er iets verkocht wordt.',
+      forever: 'voor altijd',
+      perMonth: '/ maand',
+      from: 'vanaf',
+      licenceLabel: 'Licentie',
+      status: { launch: 'BIJ DE PUBLIEKE LANCERING', planned: 'GEPLAND' },
+      licences: {
+        apache: 'Apache-2.0 + merkbeleid',
+        cloud: 'Cloudvoorwaarden + verwerkersovereenkomst',
+        commercial: 'Commerciële licentie voor add-ons + MSA',
+      },
+      runs: '{runs} journey-runs / maand inbegrepen',
+      over: 'daarna {price} per 100 runs',
+      plans: {
+        community: {
+          name: 'Community',
+          who: 'Voor iedereen',
+          points: [
+            'Alle vijf panels, Studio, MCP, agent-eval en elke integratie',
+            'Lokale modellen of je eigen sleutel; onbeperkt runs op je machine of CI',
+            'Communitysupport op GitHub',
+          ],
+        },
+        starter: {
+          name: 'Cloud Starter',
+          who: 'Solo-bouwers en kleine teams',
+          points: [
+            'Gehoste browsers, 3 projecten, 30 dagen bewaren',
+            'Deelbare rapporten, onbeperkt gebruikers',
+          ],
+        },
+        team: {
+          name: 'Cloud Team',
+          who: 'Product- en engineeringteams',
+          points: [
+            'PR-gate voor privérepositories, geschiedenis van agentbenchmarks',
+            'Kalibratiewerkruimte, 1 jaar bewaren, e-mailsupport',
+          ],
+        },
+        enterprise: {
+          name: 'Enterprise',
+          who: 'Grotere en gereguleerde organisaties',
+          points: [
+            'SSO/SAML, SCIM, auditlogs, dataopslag in de EU',
+            'Zelf gehost of VPC-controlelaag, SLA, jaarcontract',
+          ],
+        },
+      },
+      unit: 'Een journey-run is één synthetische koper die één journey probeert op één versie. Een voor/na-vergelijking met 20 kopers gebruikt er 40. Modeltokens zitten nooit verborgen in de prijs.',
+      servicesTitle: 'Diensten tegen vaste prijs',
+      servicesLead:
+        'Uitgevoerd met de opensourcetool, zodat je elke bevinding achteraf kunt reproduceren. Beschikbaar zodra het bedrijf bestaat.',
+      services: {
+        audit: [
+          'Lanceringsaudit',
+          'Eén product, voor en na, alle vijf panels, schriftelijk rapport en een reviewgesprek.',
+        ],
+        agents: ['Agentbenchmark', 'Twee tot vier AI-codeeragents op je repository, met het ruwe bewijs.'],
+        calibration: [
+          'Kalibratie-inrichting',
+          'Koppel je geaggregeerde analytics en krijg je eerste kalibratierapport.',
+        ],
+        support: [
+          'Support voor zelf hosten',
+          'Een supportcontract voor teams die de open kern in productie draaien.',
+        ],
+      },
+      discounts:
+        'Voorgestelde kortingen: Cloud Team gratis voor opensourceprojecten en non-profits, Starter gratis voor onderwijs en 50% korting in het eerste jaar voor startups in een vroege fase.',
+      source: 'Details, formules en marktankers: docs/PRICING.md in de repository.',
+    },
+    roi: {
+      title: 'Bereken je rendement',
+      lead: 'Vijf manieren waarop Buyer Arena zichzelf kan terugverdienen. De calculator gebruikt de formule uit ons prijsdocument; vul je eigen cijfers in.',
+      paths: [
+        ['Onderzoeksbudget bespaard', 'Usabilityrondes die je niet meer voor elke release hoeft te doen.'],
+        [
+          'Conversie teruggewonnen',
+          'Frictie die vóór de lancering gevonden is, geteld op de ondergrens en maal een betrouwbaarheidsfactor.',
+        ],
+        ['Engineeringtijd bespaard', 'Regressies zoeken en handmatige QA die je niet hoefde te doen.'],
+        [
+          'Modelkosten vermeden',
+          'Exacte cache, routering en lokale modellen; elke run rapporteert zijn tokeneconomie.',
+        ],
+        ['Betere agentkeuze', 'Kies de AI-codeeragent waarvan de wijzigingen echt door je gates komen.'],
+      ],
+      calcTitle: 'ROI-calculator — illustratief',
+      fields: {
+        rounds: 'Vermeden usabilityrondes per jaar',
+        roundCost: 'Totale kosten per ronde (€)',
+        visitors: 'Bezoekers per maand',
+        uplift: 'Echte conversiestijging (procentpunten)',
+        value: 'Waarde per conversie (€)',
+        confidence: 'Betrouwbaarheidsfactor (0–1)',
+        hours: 'Bespaarde engineeringuren per jaar',
+        rate: 'Kosten per uur (€)',
+        plan: 'Kosten Buyer Arena per maand (€)',
+      },
+      out: {
+        a: 'Onderzoeksbudget bespaard',
+        b: 'Conversie teruggewonnen',
+        c: 'Engineeringtijd bespaard',
+        cost: 'Kosten Buyer Arena',
+        net: 'Netto per jaar',
+        ratio: 'Rendement op kosten',
+      },
+      perYear: 'per jaar',
+      note: 'Illustratief, geen klantresultaat. Buyer Arena meet een benadering van conversie, geen omzet; zolang een run ONGEKALIBREERD is, houd je de betrouwbaarheidsfactor op 0,5 of lager. Modelkosten en agentkeuze zitten niet in de calculator.',
     },
     selfAudit: {
       label: 'ZELFAUDIT — GEEN EXTERNE VALIDATIE',

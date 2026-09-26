@@ -1849,6 +1849,214 @@ td.skip-v {
 }
 
 /* ───────── responsive ───────── */
+/* ───────── pricing and ROI ───────── */
+.plans {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.plan {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.plan-community {
+  border-color: var(--accent);
+}
+.plan-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.plan h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+}
+.plan .who {
+  margin: 6px 0 12px;
+  color: var(--text-2);
+  font-size: 14px;
+}
+.price {
+  margin: 0 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+.price .amount {
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+.price .from,
+.price .per {
+  color: var(--text-2);
+  font-size: 14px;
+}
+.quota {
+  margin: 0 0 10px;
+  font-size: 13.5px;
+}
+.plan .ticks {
+  flex: 1;
+  align-content: start;
+}
+.lic {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+.plan .btn {
+  margin-top: 14px;
+  align-self: flex-start;
+}
+.services {
+  margin-top: 16px;
+}
+.svc {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+}
+.svc li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.svc h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+.svc p {
+  margin: 0;
+  font-size: 14px;
+}
+.svc-price {
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.roi-paths {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.roi-paths li {
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.roi-paths .flow-n {
+  position: static;
+  width: 32px;
+  height: 32px;
+}
+.roi-paths h3 {
+  font-size: 15.5px;
+  margin: 0 0 4px;
+}
+.roi-paths p {
+  margin: 0;
+  font-size: 14px;
+}
+.roi-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 24px;
+  align-items: start;
+}
+.roi-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.rf {
+  display: grid;
+  gap: 6px;
+  align-content: end;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.rf input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--text-3);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+}
+.roi-out dl {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.roi-out dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.roi-out dt {
+  color: var(--text-2);
+  font-size: 14px;
+}
+.roi-out dd {
+  margin: 0;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.roi-out .total dd {
+  font-size: 20px;
+  color: var(--good);
+}
+.roi-out p {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+.roi-calc .note {
+  margin-top: 18px;
+}
+@media (max-width: 1100px) {
+  .plans {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .roi-paths {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .roi-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 720px) {
+  .plans,
+  .svc,
+  .roi-paths {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .roi-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 360px) {
+  .roi-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 1100px) {
   .links {
     display: none;
