@@ -1,0 +1,47 @@
+{
+  "testFile": "test_chat.py",
+  "testPassed": 1,
+  "testFailed": 1,
+  "runDuration": 3.2,
+  "evaluationCost": 0.0042,
+  "testCases": [
+    {
+      "name": "test_case_0",
+      "input": "Where is my order?",
+      "actualOutput": "…",
+      "success": true,
+      "metricsData": [
+        {
+          "name": "Answer Relevancy",
+          "threshold": 0.5,
+          "success": true,
+          "score": 0.92,
+          "reason": "…",
+          "strictMode": false,
+          "evaluationModel": "gpt-4.1",
+          "evaluationCost": 0.0021,
+          "inputTokenCount": 300,
+          "outputTokenCount": 40
+        }
+      ]
+    },
+    {
+      "name": "test_case_1",
+      "input": "Refund?",
+      "actualOutput": "…",
+      "success": false,
+      "metricsData": [
+        {
+          "name": "Faithfulness",
+          "threshold": 0.7,
+          "success": false,
+          "score": 0.41,
+          "reason": "…",
+          "strictMode": false,
+          "evaluationModel": "gpt-4.1",
+          "evaluationCost": 0.0021
+        }
+      ]
+    }
+  ]
+}

@@ -1,34 +1,13 @@
-# Example: run Buyer Arena on every pull request against its preview deployment and
-# post the comparison as a PR comment. Copy to .github/workflows/ in YOUR app's repo.
-# Deterministic buyers by default: no API keys, no cost. Targets are your own previews only.
+# Example caller: synthetic buyers on every pull request against its preview deployment.
+# Pair it with examples/github-actions/pr-comment.yml to post the compact summary.
 name: Buyer Arena
 on: pull_request
 permissions:
   contents: read
-  pull-requests: write
 jobs:
-  synthetic-buyers:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - name: Install Buyer Arena
-        run: |
-          git clone --depth 1 https://github.com/abrahamhl/buyer-arena.git /tmp/buyer-arena
-          cd /tmp/buyer-arena && npm ci && npx playwright install --with-deps chromium
-      - name: Compare production vs this PR's preview
-        env:
-          NO_COLOR: '1'
-          BASELINE_URL: ${{ vars.PRODUCTION_URL }}
-          CANDIDATE_URL: ${{ vars.PREVIEW_URL_PREFIX }}${{ github.event.number }}
-        run: |
-          cd /tmp/buyer-arena
-          node dist/cli/main.js compare --baseline "$BASELINE_URL" --candidate "$CANDIDATE_URL" \
-            --success-text "welcome|trial is active" --size 20 --seed 42 | tee /tmp/summary.txt
-      - name: Comment on the PR
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const body = require('fs').readFileSync('/tmp/summary.txt', 'utf8').split('\n').filter(l => !l.includes('[ ')).join('\n');
-            await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number,
-              body: '### ▲ Buyer Arena — synthetic buyers on this PR\n```text\n' + body.slice(-6000) + '\n```\n_Conversion proxy from synthetic buyers, not predicted revenue._' });
+  buyers:
+    uses: abrahamhl/buyer-arena/.github/workflows/buyer-arena-pr.yml@main # pin a commit SHA
+    with:
+      baseline-url: ${{ vars.PRODUCTION_URL }}
+      candidate-url: ${{ vars.PREVIEW_URL_PREFIX }}${{ github.event.number }}
+      success-text: 'welcome|trial is active'

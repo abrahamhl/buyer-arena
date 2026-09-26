@@ -13,7 +13,7 @@ on:
       mix:
         description: 'Attention per panel'
         required: false
-        default: 'users=40,developers=15,investors=15,security=15,segments=15'
+        default: 'users=40,developers=15,commercial=15,security=15,segments=15'
       size:
         description: 'Synthetic participants (5–200)'
         required: false
@@ -42,7 +42,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
-      BUYER_ARENA_OFFLINE: '1'
       IN_URL: ${{ inputs.url }}
       IN_MIX: ${{ inputs.mix }}
       IN_SIZE: ${{ inputs.size }}
@@ -62,10 +61,14 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Launch check
         run: |
+          # Network policy: OFFLINE unless you named a website or asked to install the repo
+          # (both need the internet). No model keys exist here, so nothing paid can run.
+          net=offline
+          if [ -n "$IN_URL" ] || [ "$IN_EXECUTE" = "true" ]; then net=online; fi
           args=(--repo . --mix "$IN_MIX" --size "$IN_SIZE" --depth "$IN_DEPTH" --lang "$IN_LANG" --export md,csv,json,pdf,png --root out --no-dashboard --name "${GITHUB_REPOSITORY#*/}")
           if [ -n "$IN_URL" ]; then args+=(--url "$IN_URL"); else args+=(--demo); fi
           if [ "$IN_EXECUTE" = "true" ]; then args+=(--execute); fi
-          node dist/cli/main.js launch-check "${args[@]}"
+          node dist/cli/main.js --network "$net" launch-check "${args[@]}"
       - name: Summary
         if: always()
         run: |

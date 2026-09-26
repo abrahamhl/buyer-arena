@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { classifyHost, tryNetwork } from '../policy/network.js';
 import { hashSeed, Rng } from '../core/rng.js';
 import type { RunRecord } from '../core/types.js';
 import { runArgus } from './argus.js';
@@ -45,7 +46,14 @@ const QUOTED_OPT = /['"`][^'"`]*shell:\s*true/;
 const COMMENT = /^\s*(\/\/|\/\*|\*|#)/;
 /** Phrases that try to take over an AI agent that reads the file (prompt injection / tool poisoning). */
 export const INJECTION =
-  /ignore (all |any )?(the )?(previous|prior|above|earlier) (instructions|messages|rules)|disregard (the |all )?(system|previous|prior) (prompt|instructions)|you are now (a|an|in)\b|new (system )?instructions\s*:|do not (tell|inform|mention (this )?to|reveal (this )?to) the user|without (asking|telling|informing) the user|<\s*\/?\s*(system|important|instructions?)\s*>|before using this tool,? (you must|always|first)|exfiltrat\w*|(send|post|upload) (the |all |your )?(secrets?|tokens?|keys?|credentials|\.env|ssh)/i;
+  /ignore (all |any )?(the )?(previous|prior|above|earlier) (instructions|messages|rules)|disregard (the |all )?(system|previous|prior) (prompt|instructions)|you are now (a|an|in)\b|new (system )?instructions\s*:|do not (tell|inform|mention (this )?to|reveal (this )?to) the user|without (asking|telling|informing) the user|<\s*\/?\s*(system|important|instructions?)\s*>|before using this tool,? (you must|always|first)|exfiltrat\w*|(send|post|upload) (the |all |your )?(secrets?|tokens?|keys?|credentials|\.env|ssh)\b[^.\n]{0,60}\b(to|into)\s+(https?:|the (url|endpoint|server|webhook)|this (url|endpoint|server|webhook)|[\w.-]+\.[a-z]{2,}\b)/i;
+/**
+ * A line that mentions a dangerous flag in order to FORBID it ("never pass --yolo") documents a
+ * guard, not an instruction. Only applied to prose/docs; agent config files stay strict.
+ */
+export const PROHIBITION =
+  /\b(never|do not|don'?t|must not|refuse[sd]?|forbid(den|s)?|avoid|leave (these|them|it) off|not allowed|is refused|dangerous (flags?|options?))\b|\(dangerous!?\)/i;
+
 /** Zero-width, bidi-override and Unicode "tag" characters that hide text from humans but not from models. */
 export const HIDDEN_UNICODE =
   /[\u200B-\u200F\u2060-\u2064\uFEFF\u202A-\u202E\u2066-\u2069]|\uDB40[\uDC00-\uDC7F]/;
@@ -100,7 +108,15 @@ export async function runSecurity(o: SecOptions): Promise<PanelResult> {
     tick('Secrets');
 
     // 2 Known-vulnerable dependencies (npm audit reads the lockfile; nothing is installed).
-    if (o.level >= 2 && repo.files.includes('package-lock.json')) {
+    // npm audit sends dependency names and versions to the registry, so it is not "explicit":
+    // it runs only when the network policy already allows the registry (--network online).
+    const registry =
+      o.level >= 2 && repo.files.includes('package-lock.json')
+        ? tryNetwork('https://registry.npmjs.org/', 'package-registry')
+        : undefined;
+    if (registry && !registry.ok)
+      o.emit({ type: 'log', panel: P, line: `npm audit skipped: ${registry.reason}` });
+    if (registry?.ok) {
       o.emit({ type: 'log', panel: P, line: '$ npm audit --json --omit=dev' });
       const v = await npmAudit(o.repo as string);
       if (v) {
@@ -252,11 +268,14 @@ export async function runSecurity(o: SecOptions): Promise<PanelResult> {
         cfg,
         5,
       ),
-      ...repo.grep(
-        /--dangerously-skip-permissions|--yolo\b|auto-?approve all/i,
-        repo.textFiles(/\.(md|sh|json|ya?ml)$/),
-        5,
-      ),
+      ...repo
+        .grep(
+          /--dangerously-skip-permissions|--yolo\b|auto-?approve all/i,
+          repo.textFiles(/\.(md|sh|json|ya?ml)$/),
+          20,
+        )
+        .filter((e) => !/\.(md|mdx)$/i.test(e.ref.replace(/:\d+$/, '')) || !PROHIBITION.test(e.excerpt ?? ''))
+        .slice(0, 5),
       ...repo.grep(
         /curl [^|\n]*\|\s*(sudo\s+)?(ba)?sh|iwr [^|\n]*\|\s*iex/i,
         repo.textFiles(/\.(md|sh)$/),
@@ -311,8 +330,14 @@ export async function runSecurity(o: SecOptions): Promise<PanelResult> {
   }
 
   // 10 Web surface via Argus (public URLs only).
-  const local = !o.url || /localhost|127\.0\.0\.1|\[::1\]/.test(o.url);
-  if (o.url && o.argus && !local && o.level >= 2) {
+  const local = !o.url || classifyHost(o.url) !== 'public';
+  if (
+    o.url &&
+    o.argus &&
+    !local &&
+    o.level >= 2 &&
+    tryNetwork(o.url, 'security-probe', { explicit: true }).ok
+  ) {
     o.emit({ type: 'log', panel: P, line: `argus audit ${o.url}` });
     const a = await runArgus(o.argus, o.url);
     if (a.ok) {

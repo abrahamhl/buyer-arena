@@ -1,0 +1,2 @@
+{"conversation_id":"c1","objective":"obj","attack_result_id":"a1","executed_turns":3,"execution_time_ms":4200,"outcome":"success","targeted_harm_categories":["jailbreak"]}
+{"conversation_id":"c2","objective":"obj","attack_result_id":"a2","executed_turns":2,"execution_time_ms":1200,"outcome":"failure"}

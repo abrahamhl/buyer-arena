@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { ResponseCache } from '../models/cache.js';
 import { meteredComplete, type CostMeter } from '../providers/metered.js';
 import type { ChatProvider, ChatResponse } from '../providers/types.js';
 import { HeuristicBuyer } from './heuristic.js';
@@ -33,6 +34,7 @@ export interface LlmPolicyOptions {
   onUsage?: (res: ChatResponse) => void;
   signal?: AbortSignal;
   onFallback?: (why: string) => void;
+  cache?: ResponseCache;
 }
 
 /** LLM-driven buyer. Falls back to the deterministic buyer on malformed output. */
@@ -53,6 +55,7 @@ export class LlmBuyer implements BuyerPolicy {
     const res = await meteredComplete(this.o.provider, this.o.meter, req, {
       onUsage: this.o.onUsage,
       signal: this.o.signal,
+      cache: this.o.cache,
     }); // Budget/provider errors propagate to the runner.
     const parsed = parseAction(res.text, ctx);
     if (!parsed.ok) {

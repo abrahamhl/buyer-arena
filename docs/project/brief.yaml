@@ -156,12 +156,12 @@ items:
     area: launch
     text:
       es: 'Cinco paneles (usuario, desarrollador, inversor, red team, segmentos)'
-      en: 'Five panels (user, developer, investor, red team, segments)'
+      en: 'Five panels (user, developer, commercial readiness, red team, segments)'
       nl: 'Vijf panels (gebruiker, ontwikkelaar, investeerder, red team, segmenten)'
     probes:
       [
         { file: '^src/panels/developers\.ts$' },
-        { file: '^src/panels/investors\.ts$' },
+        { file: '^src/panels/commercial\.ts$' },
         { file: '^src/panels/security\.ts$' },
         { file: '^src/panels/segments\.ts$' },
       ]

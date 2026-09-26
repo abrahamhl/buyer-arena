@@ -1,7 +1,11 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { chromium, type Browser } from 'playwright';
+import type { Browser } from 'playwright';
+import { launchChromium } from '../core/browser.js';
+import { ResponseCache } from '../models/cache.js';
+import type { RoutingDecision } from '../models/router.js';
+import { currentLedger, type NetworkLedgerV1 } from '../policy/network.js';
 import { BudgetExceededError } from '../core/errors.js';
 import { ensureDir, readJson, writeJson } from '../core/fs.js';
 import { mapPool } from '../core/pool.js';
@@ -48,6 +52,10 @@ export interface SessionOptions {
   network?: 'slow3g';
   /** Allow resuming with different variant URLs (e.g. demo stores on new ephemeral ports). */
   allowTargetChange?: boolean;
+  /** Exact response cache for LLM buyers (default on; temperature-0 requests only). */
+  cache?: boolean;
+  /** Routing decision that produced `buyer` (recorded in session.json). */
+  routing?: RoutingDecision;
   /** Extra terms that must never reach a buyer (hypotheses, change descriptions…). */
   forbiddenTerms?: string[];
   signal?: AbortSignal;
@@ -79,6 +87,11 @@ export interface SessionManifest {
   runs_total: number;
   runs_done: number;
   usage: Usage[];
+  /** Network policy and everything that was contacted / sent while this session ran. */
+  network?: NetworkLedgerV1;
+  /** Cache hits and cascade escalations (token economy). */
+  economy?: { cache_hits: number; escalations: number };
+  routing?: RoutingDecision;
 }
 
 export interface SessionResult {
@@ -174,6 +187,22 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
   }
   // Prior spend counts against the budget: resuming never grants a fresh budget.
   const priorSpend = (prior?.usage ?? []).reduce((a, u) => a + u.estimated_cost_usd, 0);
+  // Network policy: every target is checked before a browser starts.
+  const cache =
+    provider && o.cache !== false
+      ? new ResponseCache(join(resolve(o.root ?? DEFAULT_ROOT), 'cache', 'responses'))
+      : undefined;
+  const ledger = currentLedger();
+  for (const v of o.variants) ledger.check(v.url, 'browser', { explicit: true });
+  if (o.engineCommand) {
+    // A sidecar engine runs outside Buyer Arena's process and is not sandboxed: under OFFLINE
+    // it only starts when the user asserts it makes no network calls of its own.
+    if (ledger.effectiveMode === 'offline' && process.env.BUYER_ARENA_ENGINE_OFFLINE_SAFE !== '1')
+      throw new Error(
+        'network policy OFFLINE: external engines (Browser Use, Stagehand…) usually call a cloud model. Set BUYER_ARENA_ENGINE_OFFLINE_SAFE=1 only if this engine uses a local model and no network.',
+      );
+    ledger.recordAdapter('external-engine', ledger.effectiveMode !== 'offline');
+  }
   const meter = new CostMeter({ budgetUsd: o.budgetUsd ?? (isLlm ? 1 : undefined) }, priorSpend);
   const manifest: SessionManifest = {
     session_id: sessionId,
@@ -246,6 +275,7 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
           policy = new LlmBuyer({
             provider,
             meter,
+            cache,
             signal: internal.signal,
             onUsage: (res) => {
               runUsage = addUsage(runUsage, new CostMeter().record(provider, res));
@@ -274,7 +304,7 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
         }
         let browser: Browser;
         try {
-          browserP ??= chromium.launch({ headless: !o.headed });
+          browserP ??= launchChromium({ headless: !o.headed });
           browser = await browserP;
         } catch (err) {
           // A browser that cannot start is fatal for the whole session, not for one buyer.
@@ -324,6 +354,12 @@ export async function runSession(o: SessionOptions): Promise<SessionResult> {
     manifest.runs_done = done;
     manifest.updated_at = new Date().toISOString();
     manifest.usage = mergeUsage(prior?.usage ?? [], meter.summary());
+    manifest.network = ledger.snapshot();
+    manifest.economy = {
+      cache_hits: (prior?.economy?.cache_hits ?? 0) + meter.economy.cache_hits,
+      escalations: (prior?.economy?.escalations ?? 0) + meter.economy.escalations,
+    };
+    if (o.routing) manifest.routing = o.routing;
     manifest.status = fatal
       ? 'failed'
       : budgetHit

@@ -1,0 +1,47 @@
+{
+  "resourceSpans": [
+    {
+      "resource": { "attributes": [{ "key": "service.name", "value": { "stringValue": "shop-agent" } }] },
+      "scopeSpans": [
+        {
+          "spans": [
+            {
+              "traceId": "t1",
+              "spanId": "s1",
+              "name": "chat gpt-4.1-mini",
+              "startTimeUnixNano": "1790000000000000000",
+              "endTimeUnixNano": "1790000000850000000",
+              "status": { "code": 1 },
+              "attributes": [
+                { "key": "gen_ai.operation.name", "value": { "stringValue": "chat" } },
+                { "key": "gen_ai.provider.name", "value": { "stringValue": "openai" } },
+                { "key": "gen_ai.request.model", "value": { "stringValue": "gpt-4.1-mini" } },
+                { "key": "gen_ai.usage.input_tokens", "value": { "intValue": "1200" } },
+                { "key": "gen_ai.usage.output_tokens", "value": { "intValue": "35" } }
+              ]
+            },
+            {
+              "traceId": "t1",
+              "spanId": "s2",
+              "name": "retriever",
+              "attributes": [{ "key": "db.system", "value": { "stringValue": "x" } }]
+            },
+            {
+              "traceId": "t1",
+              "spanId": "s3",
+              "name": "llm",
+              "status": { "code": 2 },
+              "attributes": [
+                { "key": "openinference.span.kind", "value": { "stringValue": "LLM" } },
+                { "key": "llm.model_name", "value": { "stringValue": "llama3.1" } },
+                { "key": "llm.provider", "value": { "stringValue": "ollama" } },
+                { "key": "llm.token_count.prompt", "value": { "intValue": 10 } },
+                { "key": "llm.cost.total", "value": { "doubleValue": 0 } }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

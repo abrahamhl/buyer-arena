@@ -46,7 +46,7 @@ describe('CLI smoke tests (built binary)', () => {
   });
 
   it('doctor runs without network or spend', () => {
-    expect(cli(['doctor'])).toMatch(/Playwright Chromium/);
+    expect(cli(['doctor'])).toMatch(/Chromium/);
   });
 
   it('init scaffolds a usable config', () => {

@@ -3,6 +3,9 @@ import { join } from 'node:path';
 import type { Analysis } from '../analysis.js';
 import { readJson, writeFileAtomic } from '../core/fs.js';
 import type { Population } from '../core/types.js';
+import { buyerArenaVersion } from '../core/version.js';
+import { analysisToEvidence } from '../evidence/builtin.js';
+import { writeEvidence } from '../evidence/store.js';
 import { loadRuns } from '../simulator/session.js';
 import { renderBacklog } from './backlog-md.js';
 import { journeyViews, renderReport } from './html.js';
@@ -20,6 +23,8 @@ export function writeReports(sessionDir: string, analysis: Analysis): ReportPath
   const backlog = join(sessionDir, 'ROI_BACKLOG.md');
   writeFileAtomic(html, renderReport(analysis, journeyViews(sessionDir, runs, personas)));
   writeFileAtomic(backlog, renderBacklog(analysis));
+  // Portable evidence (Evidence Protocol v1) next to the human report.
+  writeEvidence(join(sessionDir, 'evidence.jsonl'), analysisToEvidence(analysis, buyerArenaVersion()));
   return { html, backlog };
 }
 

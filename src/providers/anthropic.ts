@@ -13,7 +13,7 @@ export class AnthropicProvider implements ChatProvider {
   readonly name = 'anthropic';
   readonly paid = true;
   readonly pricing: ModelPricing;
-  private readonly baseUrl: string;
+  readonly baseUrl: string;
 
   constructor(
     readonly model: string,
@@ -38,6 +38,8 @@ export class AnthropicProvider implements ChatProvider {
         messages: req.messages,
       },
       signal,
+      60_000,
+      { provider: this.name, model: this.model },
     )) as AnthropicResponse;
     const text = (json.content ?? [])
       .filter((b) => b.type === 'text')

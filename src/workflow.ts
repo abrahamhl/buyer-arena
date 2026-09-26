@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { currentLedger } from './policy/network.js';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { analyzeSession, type Analysis } from './analysis.js';
@@ -40,6 +41,8 @@ export function assertTarget(url: string, opts: { localOnly?: boolean } = {}): s
       `remote target ${u.hostname} refused (local-only mode; set BUYER_ARENA_ALLOW_REMOTE=1 to allow)`,
     );
   }
+  // Global network policy: a public URL needs ONLINE (or an explicit escalation of the default).
+  currentLedger().check(u.toString(), 'browser', { explicit: true });
   return u.toString();
 }
 

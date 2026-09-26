@@ -35,9 +35,9 @@ export function renderLaunchMarkdown(r: LaunchReport, _a: Analysis | undefined, 
       continue;
     }
     const x = (p.extra ?? {}) as Record<string, unknown>;
-    if (id === 'investors')
+    if (id === 'commercial')
       out.push(
-        `**${T('inv.reco.l')}:** ${T(`model.${String(x.recommended)}`)} · ${T('inv.viral')}: ${String(x.virality)}/100`,
+        `**${T('com.reco.l')}:** ${T(`model.${String(x.recommended)}`)} · ${T('com.viral')}: ${String(x.virality)}/100`,
         '',
       );
     if (id === 'security')

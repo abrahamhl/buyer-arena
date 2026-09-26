@@ -1,0 +1,20 @@
+{
+  "results": {
+    "hellaswag": {
+      "alias": "hellaswag",
+      "acc,none": 0.2891,
+      "acc_stderr,none": 0.0045,
+      "acc_norm,none": 0.3114,
+      "acc_norm_stderr,none": 0.0046
+    }
+  },
+  "versions": { "hellaswag": 1.0 },
+  "n-shot": { "hellaswag": 0 },
+  "higher_is_better": { "hellaswag": { "acc": true, "acc_norm": true } },
+  "config": { "model": "hf", "model_args": "pretrained=gpt2", "batch_size": "8" },
+  "git_hash": "abc1234",
+  "date": 1790000000.0,
+  "lm_eval_version": "0.4.13",
+  "model_name": "gpt2",
+  "total_evaluation_time_seconds": "812.4"
+}

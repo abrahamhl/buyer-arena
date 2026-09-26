@@ -16,21 +16,23 @@ interface OpenAIResponse {
 export class OpenAICompatibleProvider implements ChatProvider {
   readonly pricing: ModelPricing;
   readonly paid: boolean;
+  private readonly extraHeaders: Record<string, string>;
 
   constructor(
     readonly name: string,
     readonly model: string,
-    private readonly baseUrl: string,
+    readonly baseUrl: string,
     private readonly apiKey?: string,
-    opts: { local?: boolean; pricing?: ModelPricing } = {},
+    opts: { local?: boolean; pricing?: ModelPricing; headers?: Record<string, string> } = {},
   ) {
     this.paid = !opts.local;
+    this.extraHeaders = opts.headers ?? {};
     this.pricing = opts.pricing ?? (opts.local ? FREE_PRICING : lookupPricing(model));
   }
 
   async complete(req: ChatRequest, signal?: AbortSignal): Promise<ChatResponse> {
     const started = Date.now();
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { ...this.extraHeaders };
     if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
     const json = (await postJson(
       `${this.baseUrl.replace(/\/$/, '')}/chat/completions`,
@@ -43,6 +45,7 @@ export class OpenAICompatibleProvider implements ChatProvider {
       },
       signal,
       this.paid ? 60_000 : 180_000,
+      { provider: this.name, model: this.model },
     )) as OpenAIResponse;
     return {
       text: json.choices?.[0]?.message?.content ?? '',

@@ -16,7 +16,7 @@ interface Row {
 const NAMES: Record<PanelId, string> = {
   users: 'End users',
   developers: 'Developers',
-  investors: 'Investors',
+  commercial: 'Commercial readiness',
   security: 'Red team',
   segments: 'Segments',
 };

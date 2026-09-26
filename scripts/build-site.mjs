@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Build the static Buyer Arena website into site-dist/.
 // Node built-ins only. Base path from env SITE_BASE (default /buyer-arena-site/), origin from SITE_ORIGIN.
-//   SITE_BASE=/buyer-arena-site/ node scripts/build-site.mjs
+// SITE_LAUNCH_STATE=prelaunch|public (default prelaunch): prelaunch never shows clone commands or
+// claims the repository is public; public shows the GitHub source link and the clone quickstart.
+//   SITE_BASE=/buyer-arena-site/ SITE_LAUNCH_STATE=prelaunch node scripts/build-site.mjs
 import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -18,6 +20,11 @@ if (/^\/[A-Za-z]:\//.test(base) || base.includes('\\')) {
   console.error(
     'SITE_BASE looks like a rewritten Windows path (' + base + '). In Git Bash use MSYS_NO_PATHCONV=1.',
   );
+  process.exit(1);
+}
+const state = process.env.SITE_LAUNCH_STATE ?? 'prelaunch';
+if (state !== 'prelaunch' && state !== 'public') {
+  console.error(`SITE_LAUNCH_STATE must be "prelaunch" or "public" (got "${state}")`);
   process.exit(1);
 }
 const origin = (process.env.SITE_ORIGIN ?? 'https://abrahamhl.github.io').replace(/\/+$/, '');
@@ -53,7 +60,15 @@ const og = join(SITE, 'og.png');
 const hasOg = existsSync(og);
 if (hasOg) cpSync(og, join(OUT, 'assets/og.png'));
 
-const ctxBase = { base, origin, hasOg, v: { css: hash(css), js: hash(js) } };
+const version = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
+const reportSrc = join(SITE, 'report');
+// The self-audit report (report/index.html) is optional and placed by another step.
+const hasSelfAudit = existsSync(join(reportSrc, 'index.html'));
+const hasDemo = existsSync(join(reportSrc, 'demo', 'report.html'));
+if (!hasDemo)
+  console.warn('warning: site/report/demo/report.html is missing: the "real report" links will 404');
+
+const ctxBase = { base, origin, hasOg, state, version, hasSelfAudit, v: { css: hash(css), js: hash(js) } };
 const pages = [];
 
 // Language pages.
@@ -68,8 +83,7 @@ write('index.html', indexPage({ ...ctxBase, lang: undefined }));
 write('404.html', notFoundPage(ctxBase));
 pages.push('index.html', '404.html');
 
-// Optional self-audit report placed by another step.
-const reportSrc = join(SITE, 'report');
+// Real demo report (site/report/demo/) and the optional self-audit report (site/report/index.html).
 if (existsSync(reportSrc)) cpSync(reportSrc, join(OUT, 'report'), { recursive: true });
 
 // robots.txt + sitemap.xml with hreflang alternates.
@@ -97,5 +111,5 @@ write(
 write('.nojekyll', '');
 
 console.log(
-  `site-dist: ${pages.length} pages (${LANGS.map((l) => content[l].lang).join(' · ')}), base ${base}, og image ${hasOg ? 'yes' : 'no'}, report ${existsSync(reportSrc) ? 'copied' : 'not present (link only)'}`,
+  `site-dist: ${pages.length} pages (${LANGS.map((l) => content[l].lang).join(' · ')}), base ${base}, state ${state}, og image ${hasOg ? 'yes' : 'no'}, demo report ${hasDemo ? 'copied' : 'MISSING'}, self-audit ${hasSelfAudit ? 'copied' : 'not present'}`,
 );

@@ -1,4 +1,8 @@
 import { basename, join, resolve } from 'node:path';
+import { buyerArenaVersion } from './core/version.js';
+import { launchToEvidence } from './evidence/builtin.js';
+import { writeEvidence } from './evidence/store.js';
+import { currentLedger, type NetworkLedgerV1 } from './policy/network.js';
 import type { Analysis } from './analysis.js';
 import { ensureDir, readJson, writeFileAtomic, writeJson } from './core/fs.js';
 import type { Population, RunRecord, Task } from './core/types.js';
@@ -6,7 +10,7 @@ import { startDemoStore, type DemoStore } from './demo-store/server.js';
 import { generatePopulation } from './personas/generate.js';
 import { evaluateBrief, type BriefResult } from './panels/brief.js';
 import { runDevelopers } from './panels/developers.js';
-import { runInvestors } from './panels/investors.js';
+import { runCommercial } from './panels/commercial.js';
 import { allocate, estimateSeconds, parseMix, type Allocation, type Depth, type Mix } from './panels/mix.js';
 import { runSecurity } from './panels/security.js';
 import { runSegments } from './panels/segments.js';
@@ -21,7 +25,7 @@ import { DEMO_TASK } from './workflow.js';
 export interface LaunchOptions {
   root?: string;
   id?: string;
-  /** Local repository to review (developers, investors, security). */
+  /** Local repository to review (developers, commercial readiness, security). */
   repo?: string;
   /** Live product URL (users, segments, security privacy/Argus). */
   url?: string;
@@ -42,6 +46,8 @@ export interface LaunchOptions {
   maxParallel?: number;
   emit?: Emit;
   signal?: AbortSignal;
+  /** Set by `audit-repo`: the repository was downloaded as data; nothing was executed. */
+  staticAudit?: { source: string; files: number; bytes: number; method: string; no_code_executed: true };
 }
 
 export interface LaunchAction {
@@ -73,6 +79,11 @@ export interface LaunchReport {
   actions: LaunchAction[];
   users_session?: string;
   duration_ms: number;
+  /** Network policy and what was contacted while the launch check ran. */
+  network?: NetworkLedgerV1;
+  /** Always true: this is Buyer Arena's own synthetic judgement, not external validation. */
+  self_generated?: boolean;
+  static_audit?: LaunchOptions['staticAudit'];
 }
 
 export interface LaunchResult {
@@ -217,14 +228,14 @@ export async function runLaunch(o: LaunchOptions): Promise<LaunchResult> {
       done(r);
     }
 
-    // 4 Investors
-    const ai = alloc('investors');
-    if (!ai.participants) skip('investors', 'share 0%');
-    else if (!repo) skip('investors', 'needs --repo');
+    // 4 Commercial readiness
+    const ai = alloc('commercial');
+    if (!ai.participants) skip('commercial', 'share 0%');
+    else if (!repo) skip('commercial', 'needs --repo');
     else {
-      emit({ type: 'panel', panel: 'investors', state: 'start' });
+      emit({ type: 'panel', panel: 'commercial', state: 'start' });
       done(
-        await runInvestors({
+        await runCommercial({
           repo,
           participants: ai.participants,
           seed,
@@ -292,6 +303,9 @@ export async function runLaunch(o: LaunchOptions): Promise<LaunchResult> {
   const report: LaunchReport = {
     version: 1,
     id,
+    network: currentLedger().snapshot(),
+    self_generated: true,
+    static_audit: o.staticAudit,
     generated_at: new Date().toISOString(),
     name: o.name ?? (repo ? basename(repo) : (o.url ?? 'demo')),
     target: {
@@ -315,6 +329,7 @@ export async function runLaunch(o: LaunchOptions): Promise<LaunchResult> {
     duration_ms: Date.now() - t0,
   };
   writeJson(join(dir, 'launch.json'), report);
+  writeEvidence(join(dir, 'evidence.jsonl'), launchToEvidence(report, buyerArenaVersion()));
   if (analysis) writeJson(join(dir, 'users-analysis.json'), analysis);
   const html = join(dir, 'report.html');
   const md = join(dir, 'LAUNCH_REPORT.md');
@@ -346,8 +361,36 @@ export function writeLaunchOutputs(
 
 const loadUsersRuns = (d: string) => loadRuns(d);
 
+/**
+ * Upgrade launch reports written before the Investors → Commercial Readiness rename
+ * (panel id `investors`, check ids `inv.*`, mix key `investors`). Idempotent.
+ */
+export function migrateLaunchReport(r: LaunchReport): LaunchReport {
+  const legacy = (id: string) => (id === 'investors' ? 'commercial' : id) as PanelId;
+  const mix = { ...(r.mix as Record<string, number>) };
+  if ('investors' in mix) {
+    mix.commercial = mix.investors as number;
+    delete mix.investors;
+  }
+  return {
+    ...r,
+    mix: mix as Mix,
+    allocations: r.allocations.map((a) => ({ ...a, panel: legacy(a.panel) })),
+    panels: r.panels.map((p) => ({
+      ...p,
+      id: legacy(p.id),
+      checks: p.checks.map((c) => ({ ...c, panel: legacy(c.panel), id: c.id.replace(/^inv\./, 'com.') })),
+    })),
+    actions: r.actions.map((a) => ({
+      ...a,
+      panel: legacy(a.panel),
+      check: a.check.replace(/^inv\./, 'com.'),
+    })),
+  };
+}
+
 export function loadLaunch(dir: string): { report: LaunchReport; analysis?: Analysis; usersDir?: string } {
-  const report = readJson<LaunchReport>(join(dir, 'launch.json'));
+  const report = migrateLaunchReport(readJson<LaunchReport>(join(dir, 'launch.json')));
   let analysis: Analysis | undefined;
   try {
     analysis = readJson<Analysis>(join(dir, 'users-analysis.json'));
