@@ -13,16 +13,30 @@ import {
 } from './policy.js';
 import { en_ } from '../i18n/messages.js';
 
+/**
+ * Buyer keywords in the three product languages (ES · EN · NL). The heuristic buyer reads
+ * the page in the language it is served, so a Spanish or Dutch site must score "Precios",
+ * "Prueba gratis" or "Aanmelden" the same way the English equivalents do.
+ */
 export const KW = {
-  price: /pric|plans?\b|billing|cost|subscription/i,
-  cta: /start|trial|sign ?up|get started|create (an )?account|register|buy|subscribe|choose|select|join|try it|continue|checkout/i,
-  trust: /refund|guarantee|money.back|terms|faq|security|cancel/i,
-  explore: /product|features?|how it works|learn more|overview/i,
-  avoid: /sign ?in|log ?in|privacy|careers|blog|api|press|guide/i,
-  sales: /demo|sales|contact/i,
-  close: /no thanks|close|dismiss|not now|later|skip|^×$|^✕$/i,
-  menu: /menu|☰|navigation/i,
+  price:
+    /pric|precio|precios|prijs|prijzen|plans?\b|plan(nen|es)|billing|factur|coste?|costo|kosten|subscription|suscripci|abonnement|tarifa|tarief/i,
+  cta:
+    /start|trial|sign ?up|get started|create (an |una )?account|crear (una )?cuenta|account (aanmaken|maken)|aanmaken|register|registr|buy|comprar|kopen|subscribe|suscrib|choose|select|elegir|seleccionar|join|unirse|try it|probar|probeer|proberen|continue|continuar|checkout|pagar|betalen|afrekenen|bestellen|empezar|empiez|comenzar|comienz|prueba|proef|aanmelden|doorgaan/i,
+  trust:
+    /refund|reembolso|terugbetaling|guarantee|garant|garantie|money.back|devoluci|geld terug|terms|términos|voorwaarden|condiciones|faq|veelgestelde|preguntas|security|seguridad|veiligheid|cancel|annul/i,
+  explore:
+    /product|producto|features?|funciones|functies|caracter[íi]sticas?|how it works|cómo funciona|hoe het werkt|learn more|más informaci|meer info|overview|resumen|overzicht|descubre|ontdek/i,
+  avoid:
+    /sign ?in|log ?in|iniciar sesi|inloggen|aanloggen|privacy|privacidad|careers|carreras|vacatures|blog|api|press|prensa|guide|guía|handleiding/i,
+  sales: /demo|ventas|verkoop|sales|contact|contacto/i,
+  close:
+    /no thanks|no gracias|nee bedankt|close|cerrar|sluiten|dismiss|descartar|not now|ahora no|niet nu|later|más tarde|skip|saltar|overslaan|^×$|^✕$/i,
+  menu: /menu|menú|navegaci|navigatie|navigation|☰/i,
 };
+
+/** Login/access affordances, in ES · EN · NL, so a sign-in form is never mistaken for sign-up. */
+export const LOGIN = /sign ?in|log ?in|iniciar sesi|inloggen|aanloggen|entrar|acceder/i;
 
 /** Behavioural traits derived ONLY from persona attributes in the brief. */
 export interface Traits {
@@ -235,7 +249,7 @@ export class HeuristicBuyer implements BuyerPolicy {
       const goal = els.some(isPasswordField) && els.some(isEmailField);
       const pay = els.some(isCardField);
       const submit = els.find((e) => e.kind === 'submit');
-      if ((goal || pay) && submit && !/sign ?in|log ?in/i.test(submit.text)) return els;
+      if ((goal || pay) && submit && !LOGIN.test(submit.text)) return els;
     }
     return null;
   }

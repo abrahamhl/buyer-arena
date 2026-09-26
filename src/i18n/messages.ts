@@ -317,7 +317,7 @@ const en: Dict = {
     'Decided by a setting of the deterministic buyer ({driver}). Its frequency reflects that choice, not observed people.',
   'chal.small_sample': 'The comparison rests on {n} paired buyers: an exploratory signal, not proven impact.',
   'drv.pricing_not_found': 'price-sensitivity threshold and scroll budget',
-  'drv.cta_not_found': 'scroll budget and English button keywords',
+  'drv.cta_not_found': 'scroll budget and button keywords (ES·EN·NL)',
   'drv.patience_exhausted': 'step budget from time pressure',
   'drv.intrusive_modal': 'gives up after 2 attempts to close a pop-up',
   'drv.form_validation': 'password strength tied to technical skill',
@@ -702,7 +702,7 @@ const es: Dict = {
   'chal.small_sample':
     'La comparación se basa en {n} compradores emparejados: una señal exploratoria, no un impacto probado.',
   'drv.pricing_not_found': 'umbral de sensibilidad al precio y presupuesto de desplazamiento',
-  'drv.cta_not_found': 'presupuesto de desplazamiento y palabras clave de botones en inglés',
+  'drv.cta_not_found': 'presupuesto de desplazamiento y palabras clave de botones (ES·EN·NL)',
   'drv.patience_exhausted': 'pasos máximos según la prisa',
   'drv.intrusive_modal': 'se rinde tras 2 intentos de cerrar un pop-up',
   'drv.form_validation': 'fuerza de contraseña ligada a la habilidad técnica',
@@ -1079,7 +1079,7 @@ const nl: Dict = {
   'chal.small_sample':
     'De vergelijking rust op {n} gekoppelde kopers: een verkennend signaal, geen bewezen effect.',
   'drv.pricing_not_found': 'drempel voor prijsgevoeligheid en scrollbudget',
-  'drv.cta_not_found': 'scrollbudget en Engelse knopwoorden',
+  'drv.cta_not_found': 'scrollbudget en knopwoorden (ES·EN·NL)',
   'drv.patience_exhausted': 'maximum aantal stappen afhankelijk van tijdsdruk',
   'drv.intrusive_modal': 'geeft op na 2 pogingen om een pop-up te sluiten',
   'drv.form_validation': 'wachtwoordsterkte gekoppeld aan technische vaardigheid',
