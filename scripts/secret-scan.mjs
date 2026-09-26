@@ -15,6 +15,9 @@ const PATTERNS = [
 const files = execSync('git ls-files --cached --others --exclude-standard', { encoding: 'utf8' })
   .split('\n')
   .filter(Boolean);
+// Intentional negative-test fixtures: fake credentials that exist to verify redaction.
+// A marker, not a file path, so a real key pasted next to one is still caught.
+const ALLOWED_MARKERS = ['should-not-leak'];
 const hits = [];
 for (const f of files) {
   if (/package-lock\.json$|\.(png|jpe?g|zip|gif|ico)$/.test(f)) continue;
@@ -26,6 +29,7 @@ for (const f of files) {
     continue;
   }
   text.split('\n').forEach((line, i) => {
+    if (ALLOWED_MARKERS.some((m) => line.includes(m))) return;
     for (const [name, re] of PATTERNS) if (re.test(line)) hits.push(`${f}:${i + 1}  ${name}`);
   });
 }

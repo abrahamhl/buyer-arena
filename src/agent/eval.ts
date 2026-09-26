@@ -21,6 +21,7 @@ import {
 } from '../lifecycle/graph.js';
 import { SECRET_PATTERNS } from '../panels/security.js';
 import { currentLedger, type NetworkLedgerV1 } from '../policy/network.js';
+import { executionMode, runInSandbox, type ExecutionMode } from '../sandbox/docker.js';
 import type { AgentRunEnvelope } from './envelope.js';
 
 export interface AgentEvalCommands {
@@ -38,6 +39,8 @@ export interface AgentEvalOptions {
   commands?: AgentEvalCommands;
   /** Extra environment variable NAMES passed to build/test (credentials are stripped by default). */
   envPass?: string[];
+  /** Where build/test execute. `docker` runs them in a throw-away container (MODE C). */
+  sandbox?: ExecutionMode;
   timeoutMs?: number;
   root?: string;
   id?: string;
@@ -390,6 +393,26 @@ export async function runAgentEval(o: AgentEvalOptions): Promise<{ report: Agent
   if (cmds.install)
     currentLedger().check('https://registry.npmjs.org/', 'package-registry', { explicit: true });
   const env = scrubbedEnv(o.envPass ?? [], { BUYER_ARENA_AGENT_EVAL: '1' });
+  const mode = executionMode({ requested: o.sandbox, remoteRepo: /^(https?:\/\/|git@|ssh:\/\/)/.test(repo) });
+  const runStep = (step: keyof AgentEvalCommands, cmd: string, cwd: string): Promise<CommandResult> => {
+    if (mode === 'docker') {
+      return runInSandbox(
+        cwd,
+        { cmd, network: step === 'install' },
+        undefined,
+        (l) => emit(`[docker] ${l}`),
+        undefined,
+      ).then((r) => ({
+        step,
+        cmd,
+        ok: r.ok,
+        code: r.code,
+        ms: r.ms,
+        tail: r.tail,
+      }));
+    }
+    return runCommand(step, cmd, cwd, env, timeoutMs);
+  };
   const runSide = async (sha: string, label: string): Promise<CommandResult[]> =>
     withWorktree(repo, sha, async (wt) => {
       const out: CommandResult[] = [];
@@ -397,7 +420,7 @@ export async function runAgentEval(o: AgentEvalOptions): Promise<{ report: Agent
         const cmd = cmds[step];
         if (!cmd) continue;
         emit(`[${label}] $ ${cmd}`);
-        const r = await runCommand(step, cmd, wt, env, timeoutMs);
+        const r = await runStep(step, cmd, wt);
         out.push(r);
         if (step === 'install' && !r.ok) break;
       }

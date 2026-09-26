@@ -214,7 +214,7 @@ export const ENGINEERING_AUDITOR: Auditor = {
 /** Findings whose occurrence is set by a parameter of the deterministic buyer (disclosed by the red team). */
 const POLICY_DRIVEN: Record<string, string> = {
   pricing_not_found: 'the price-sensitivity threshold (≥0.4) and the literacy/device scroll budget',
-  cta_not_found: 'the scroll budget and English CTA keywords',
+  cta_not_found: 'the scroll budget and multilingual (ES·EN·NL) CTA keywords',
   patience_exhausted: 'the step budget derived from time pressure (10/14/18 steps)',
   intrusive_modal: 'the pop-up tolerance (gives up after 2 dismissal attempts)',
   form_validation: 'the password-strength rule tied to technical literacy',
