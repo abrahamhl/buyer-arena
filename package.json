@@ -1,6 +1,6 @@
 {
   "name": "buyer-arena",
-  "version": "0.2.0-rc.1",
+  "version": "0.2.0",
   "description": "Evidence-first evaluation layer for software built by humans and AI agents: synthetic buyers in real browsers, agent-run evaluation, security and eval tool evidence, offline-first.",
   "license": "Apache-2.0",
   "type": "module",

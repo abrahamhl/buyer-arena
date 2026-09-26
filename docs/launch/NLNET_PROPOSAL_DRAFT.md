@@ -33,7 +33,7 @@ deliverables are Apache-2.0 and verifiable in the public repository.
 
 ## Relevant prior involvement
 
-`[Owner: background in IT, cybersecurity and AI automation; built Buyer Arena 0.2.0-rc.1 solo — 166
+`[Owner: background in IT, cybersecurity and AI automation; built Buyer Arena 0.2.0 solo — 166
 automated tests, CI on Linux and Windows, 14 integrations. Keep it factual.]`
 
 ## Requested amount and use of the budget
