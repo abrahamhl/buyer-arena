@@ -15,7 +15,7 @@ and tells you what it measured, where the evidence came from and what left your 
 
 </div>
 
-> **Release candidate (pre-launch).** This repository is private until an independent audit.
+> **Release candidate (pre-launch).** The source is public for review; an independent audit is pending.
 > Nothing here is published to npm yet — do not run `npx buyer-arena`.
 
 ## In 30 seconds
@@ -28,7 +28,7 @@ and tells you what it measured, where the evidence came from and what left your 
 | a local model, or no model at all                        | the full pipeline, offline; cloud models are optional and every byte that leaves is recorded                |
 
 ```bash
-npm install           # builds the CLI (repository access required during the RC)
+npm install           # builds the CLI from this repository
 npm run demo          # 20 synthetic buyers × 2 versions of a demo SaaS · 15–30 s · no API keys · nothing leaves the machine
 ```
 
