@@ -4,6 +4,7 @@ on:
     branches: [feat/evidence-real-buyer-arena-audit-20261021]
     paths:
       - 'scripts/persona-proof.mjs'
+      - 'scripts/civic-relay-review.mjs'
       - '.github/workflows/persona-evidence-ci.yml'
       - '.github/workflows/ci.yml'
       - 'package.json'
@@ -13,6 +14,7 @@ on:
   pull_request:
     paths:
       - 'scripts/persona-proof.mjs'
+      - 'scripts/civic-relay-review.mjs'
       - '.github/workflows/persona-evidence-ci.yml'
       - '.github/workflows/ci.yml'
       - 'package.json'
