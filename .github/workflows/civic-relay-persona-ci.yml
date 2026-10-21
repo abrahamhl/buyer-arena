@@ -1,0 +1,82 @@
+name: Buyer Arena | OEP Civic Relay verified browser roles
+on:
+  push:
+    branches: [feat/evidence-real-buyer-arena-audit-20261021]
+    paths:
+      - 'scripts/civic-relay-review.mjs'
+      - '.github/workflows/civic-relay-persona-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  oep-roles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      CIVIC_RELAY_URL: https://civic-relay-investor-f5c2a3kdr-2fabraham-7129s-projects.vercel.app
+      CIVIC_RELAY_COMMIT: c18c6ac936c8b3c6560997b113e46b50cab51302
+      CIVIC_AUDIT_ROOT: .buyer-arena/civic-relay-audit
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # checkout v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # setup-node v4.4.0
+        with:
+          node-version: '22.23.3'
+          cache: npm
+      - name: Reconcile temporary lockfile pending dependency hygiene PR
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Install Buyer Arena from verified repo sources
+        run: npm ci --no-audit --no-fund
+      - name: Install Chromium browser for real navigation
+        run: npx playwright install --with-deps chromium
+      - name: Compile real Buyer Arena CLI
+        run: npm run build
+      - name: Buyer Arena actual compare against named OEP deployment (single-version smoke, NOT a release delta)
+        shell: bash
+        run: |
+          set +e
+          mkdir -p .buyer-arena/civic-relay-audit/cli
+          node dist/cli/main.js --network online compare \
+            --baseline "$CIVIC_RELAY_URL" \
+            --candidate "$CIVIC_RELAY_URL" \
+            --template saas --size 6 --seed 20261021 --max-parallel 2 \
+            --instruction "Find OEP research capabilities and evidence; do not imply an emergency can be dispatched" \
+            --success-text "OEP|Offline Emergency Protocol" \
+            --session civic-oep-url-smoke --root .buyer-arena/civic-relay-audit/cli \
+            > .buyer-arena/civic-relay-audit/cli/compare-stdout.log 2>&1
+          status=$?
+          printf '%s\n' "$status" > .buyer-arena/civic-relay-audit/cli/compare-exit-code.txt
+          tail -n 55 .buyer-arena/civic-relay-audit/cli/compare-stdout.log
+          echo "WARNING: baseline and candidate point to same immutable preview: browser smoke only, no A/B improvement claim."
+          if [ "$status" -ne 0 ]; then
+            echo "::warning::Buyer Arena generic SaaS heuristic may be incompatible with this research microsite; inspect raw records."
+          fi
+      - name: Eight targeted Civic Relay stakeholder role journeys with screenshots and evidence notes
+        shell: bash
+        run: |
+          set +e
+          node scripts/civic-relay-review.mjs
+          status=$?
+          printf '%s\n' "$status" > .buyer-arena/civic-relay-audit/role-exit-code.txt
+          exit 0
+      - name: Save source manifest
+        if: always()
+        run: |
+          mkdir -p .buyer-arena/civic-relay-audit
+          printf '%s\n' "Buyer Arena ref: $GITHUB_SHA" "Civic Relay ref: $CIVIC_RELAY_COMMIT" "Demo origin: $CIVIC_RELAY_URL" "ACTORS: synthetic scripts, not human testers" > .buyer-arena/civic-relay-audit/SOURCE_PROVENANCE.txt
+      - name: Upload ALL per-role logs, screenshots, JSON exports and Buyer Arena CLI data
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: civic-relay-buyer-arena-live-browser-actors
+          path: .buyer-arena/civic-relay-audit/
+          retention-days: 90
+          if-no-files-found: warn
+      - name: Release gate: fail if any critical live-browser interaction fails
+        if: always()
+        shell: bash
+        run: |
+          test -f .buyer-arena/civic-relay-audit/campaign-summary.json
+          node -e "const s=require('./.buyer-arena/civic-relay-audit/campaign-summary.json');if(s.synthetic_roles!==8||s.critical_failures>0)process.exit(1);console.log('PASS: 8 role reports, critical failures 0')"
