@@ -50,12 +50,23 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Compile executable Buyer Arena
         run: npm run build
-      - name: Core typecheck, lint and unit/integration suite
+      - name: Typecheck, lint, secret scan and full regression suite (keep failure evidence)
+        shell: bash
         run: |
+          set -euo pipefail
           npm run typecheck
           npm run lint
-          npm test
           npm run secrets:scan
+          mkdir -p .buyer-arena/persona-audit/quality
+          set +e
+          npm test > .buyer-arena/persona-audit/quality/test-output.log 2>&1
+          code=$?
+          set -e
+          printf '%s\\n' "$code" > .buyer-arena/persona-audit/quality/test-exit-code.txt
+          tail -n 80 .buyer-arena/persona-audit/quality/test-output.log
+          if [ "$code" -ne 0 ]; then
+            echo "::warning::Full suite has a regression; browser campaign continues for forensic evidence only, NOT a release PASS."
+          fi
       - name: Execute actual CLI operator surface; record stdout/stderr
         shell: bash
         run: |
@@ -75,6 +86,17 @@ jobs:
           node dist/cli/main.js launch-check --demo --repo . --size 25 --seed 421 --depth quick --name "Buyer Arena self-validation" --id product-validation --no-dashboard --root .buyer-arena/persona-audit
       - name: Check all 40 browser runs and produce evidence-backed notes per persona
         run: node scripts/persona-proof.mjs .buyer-arena/persona-audit
+      - name: Release gate - fail if the regression suite failed
+        if: always()
+        shell: bash
+        run: |
+          if [ -f .buyer-arena/persona-audit/quality/test-exit-code.txt ]; then
+            code="$(cat .buyer-arena/persona-audit/quality/test-exit-code.txt)"
+            if [ "$code" != "0" ]; then
+              echo "::error::Buyer Arena release NO-GO: core regression suite failed (see uploaded test-output.log)"
+              exit 1
+            fi
+          fi
       - name: Upload raw run.json, evidence JSONL, screenshots and launch reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # upload-artifact v4.6.2
