@@ -1,0 +1,79 @@
+name: Buyer Arena | actual synthetic persona execution and per-run evidence
+on:
+  push:
+    branches: [feat/evidence-real-buyer-arena-audit-20261021]
+    paths:
+      - 'scripts/persona-proof.mjs'
+      - '.github/workflows/persona-evidence-ci.yml'
+      - '.github/workflows/ci.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/**'
+      - 'tests/**'
+  pull_request:
+    paths:
+      - 'scripts/persona-proof.mjs'
+      - '.github/workflows/persona-evidence-ci.yml'
+      - '.github/workflows/ci.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/**'
+      - 'tests/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  persona-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      BUYER_ARENA_OFFLINE: '1'
+      BUYER_ARENA_NETWORK: 'offline'
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.12.0'
+          cache: npm
+      - name: Install dependencies from checked-in lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Install actual Chromium on runner (only to run local fictional test store)
+        run: npx playwright install --with-deps chromium
+      - name: Compile executable Buyer Arena
+        run: npm run build
+      - name: Core typecheck, lint and unit/integration suite
+        run: |
+          npm run typecheck
+          npm run lint
+          npm test
+          npm run secrets:scan
+      - name: Execute actual CLI operator surface; record stdout/stderr
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .buyer-arena/persona-audit/operator-logs
+          node dist/cli/main.js doctor > .buyer-arena/persona-audit/operator-logs/01-technical-founder-doctor.log 2>&1
+          node dist/cli/main.js models list --json > .buyer-arena/persona-audit/operator-logs/02-local-ai-engineer-model-catalog.json 2>&1
+          node dist/cli/main.js agent-eval --help > .buyer-arena/persona-audit/operator-logs/03-agent-developer-agent-eval.log 2>&1
+          node dist/cli/main.js mcp --help > .buyer-arena/persona-audit/operator-logs/04-integration-engineer-mcp.log 2>&1
+          node dist/cli/main.js gate --help > .buyer-arena/persona-audit/operator-logs/05-release-manager-gates.log 2>&1
+          node dist/cli/main.js launch-check --help > .buyer-arena/persona-audit/operator-logs/06-product-manager-five-panels.log 2>&1
+      - name: Run 20 synthetic buyers × 2 variants in REAL Chromium (not humans)
+        run: |
+          node dist/cli/main.js demo --size 20 --seed 42 --max-parallel 2 --session persona-validation --root .buyer-arena/persona-audit
+      - name: Execute five actual product panels with local browser demo and repo audit
+        run: |
+          node dist/cli/main.js launch-check --demo --repo . --size 25 --seed 421 --depth quick --name "Buyer Arena self-validation" --id product-validation --no-dashboard --root .buyer-arena/persona-audit
+      - name: Check all 40 browser runs and produce evidence-backed notes per persona
+        run: node scripts/persona-proof.mjs .buyer-arena/persona-audit
+      - name: Upload raw run.json, evidence JSONL, screenshots and launch reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # upload-artifact v4.6.2
+        with:
+          name: buyer-arena-real-synthetic-browser-evidence
+          path: .buyer-arena/persona-audit/
+          if-no-files-found: warn
+          retention-days: 14
