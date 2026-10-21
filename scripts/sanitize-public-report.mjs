@@ -26,4 +26,6 @@ if (remaining.length) {
   process.exit(1);
 }
 writeFileSync(target, cleaned);
-console.log('Public report sanitized: ' + count + ' trace links replaced; full traces retained in CI artifact.');
+console.log(
+  'Public report sanitized: ' + count + ' trace links replaced; full traces retained in CI artifact.',
+);
