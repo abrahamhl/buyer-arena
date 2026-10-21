@@ -107,6 +107,48 @@ jobs:
           fi
       - name: Check all 40 browser runs and produce evidence-backed notes per persona
         run: node scripts/persona-proof.mjs .buyer-arena/persona-audit
+      - name: Execute Buyer Arena CLI against Civic Relay research preview (URL smoke; not A/B claim)
+        shell: bash
+        env:
+          BUYER_ARENA_OFFLINE: '0'
+          BUYER_ARENA_NETWORK: 'online'
+          CIVIC_RELAY_URL: https://civic-relay-investor-f5c2a3kdr-2fabraham-7129s-projects.vercel.app
+        run: |
+          set +e
+          mkdir -p .buyer-arena/civic-relay-audit/cli
+          node dist/cli/main.js --network online compare \
+            --baseline "$CIVIC_RELAY_URL" --candidate "$CIVIC_RELAY_URL" \
+            --template saas --size 6 --seed 20261021 --max-parallel 2 \
+            --success-text "OEP|Offline Emergency Protocol" \
+            --instruction "Identify research simulation and limitations, never assume emergency dispatch" \
+            --session civic-oep-url-smoke --root .buyer-arena/civic-relay-audit/cli \
+            > .buyer-arena/civic-relay-audit/cli/compare-stdout.log 2>&1
+          status=$?
+          printf '%s\n' "$status" > .buyer-arena/civic-relay-audit/cli/compare-exit-code.txt
+          tail -n 35 .buyer-arena/civic-relay-audit/cli/compare-stdout.log
+          echo "SAME URL on both variants: navigation SMOKE TEST ONLY; no improvement delta claimed."
+      - name: Execute eight Civic Relay stakeholder browser journeys and write per-role reports
+        shell: bash
+        env:
+          BUYER_ARENA_OFFLINE: '0'
+          BUYER_ARENA_NETWORK: 'online'
+          CIVIC_RELAY_URL: https://civic-relay-investor-f5c2a3kdr-2fabraham-7129s-projects.vercel.app
+          CIVIC_RELAY_COMMIT: c18c6ac936c8b3c6560997b113e46b50cab51302
+          CIVIC_AUDIT_ROOT: .buyer-arena/civic-relay-audit
+        run: |
+          set +e
+          node scripts/civic-relay-review.mjs
+          status=$?
+          printf '%s\n' "$status" > .buyer-arena/civic-relay-audit/role-exit-code.txt
+          if [ "$status" -ne 0 ]; then echo "::warning::Civic Relay stakeholder QA uncovered blockers: preserve per-role evidence."; fi
+      - name: Archive Civic Relay stakeholder browser evidence separately
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # upload-artifact v4.6.2
+        with:
+          name: civic-relay-buyer-arena-role-evidence
+          path: .buyer-arena/civic-relay-audit/
+          if-no-files-found: warn
+          retention-days: 90
       - name: Release gate - fail if the regression suite failed
         if: always()
         shell: bash
