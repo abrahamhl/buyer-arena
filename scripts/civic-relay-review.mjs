@@ -20,7 +20,7 @@ mkdirSync(join(output, 'actors'), { recursive: true });
 mkdirSync(join(output, 'screenshots'), { recursive: true });
 mkdirSync(auditPersonasRoot, { recursive: true });
 
-const commit = process.env.CIVIC_RELAY_COMMIT || 'c18c6ac936c8b3c6560997b113e46b50cab51302';
+const commit = process.env.CIVIC_RELAY_COMMIT || '73d90de682d7aaa78fe6a7a791861aef91844613';
 const campaignMode = process.env.CIVIC_CAMPAIGN_MODE || 'SINGLE-VERSION SMOKE';
 const cases = [
   {
