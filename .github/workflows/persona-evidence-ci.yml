@@ -112,7 +112,7 @@ jobs:
         env:
           BUYER_ARENA_OFFLINE: '0'
           BUYER_ARENA_NETWORK: 'online'
-          CIVIC_RELAY_URL: https://civic-relay-investor-f5c2a3kdr-2fabraham-7129s-projects.vercel.app
+          CIVIC_RELAY_URL: https://civic-relay-investor.vercel.app
         run: |
           set +e
           mkdir -p .buyer-arena/civic-relay-audit/cli
@@ -132,7 +132,7 @@ jobs:
         env:
           BUYER_ARENA_OFFLINE: '0'
           BUYER_ARENA_NETWORK: 'online'
-          CIVIC_RELAY_URL: https://civic-relay-investor-f5c2a3kdr-2fabraham-7129s-projects.vercel.app
+          CIVIC_RELAY_URL: https://civic-relay-investor.vercel.app
           CIVIC_RELAY_COMMIT: c18c6ac936c8b3c6560997b113e46b50cab51302
           CIVIC_AUDIT_ROOT: .buyer-arena/civic-relay-audit
         run: |
