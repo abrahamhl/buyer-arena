@@ -5,12 +5,12 @@ ahead of `main`): the sandbox/egress security layer and the multilingual heurist
 
 ## Done (committed, this session)
 
-| Phase                                                              | Files                                                              | Tests                     |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------- |
-| Security layer ported + wired (egress proxy, SSRF net-guard, MODE C docker sandbox) | `src/security/*`, `src/sandbox/*`, `src/simulator/session.ts`, `src/agent/eval.ts`, `src/cli/commands.ts` | `tests/unit/security.test.ts` (57) |
-| Multilingual heuristic buyer (ES·EN·NL) + login/sign-up disambiguation | `src/simulator/heuristic.ts`, `src/i18n/messages.ts`, `src/auditors/rules.ts` | `tests/unit/heuristic-kw.test.ts` (59) |
-| Fixed ambient `OPENROUTER_API_KEY` isolation                       | `tests/unit/models.test.ts`                                       | models tests              |
-| Secret-scan allowlist re-applied                                   | `scripts/secret-scan.mjs`                                         | `secrets:scan` clean      |
+| Phase                                                                               | Files                                                                                                     | Tests                                  |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Security layer ported + wired (egress proxy, SSRF net-guard, MODE C docker sandbox) | `src/security/*`, `src/sandbox/*`, `src/simulator/session.ts`, `src/agent/eval.ts`, `src/cli/commands.ts` | `tests/unit/security.test.ts` (57)     |
+| Multilingual heuristic buyer (ES·EN·NL) + login/sign-up disambiguation              | `src/simulator/heuristic.ts`, `src/i18n/messages.ts`, `src/auditors/rules.ts`                             | `tests/unit/heuristic-kw.test.ts` (59) |
+| Fixed ambient `OPENROUTER_API_KEY` isolation                                        | `tests/unit/models.test.ts`                                                                               | models tests                           |
+| Secret-scan allowlist re-applied                                                    | `scripts/secret-scan.mjs`                                                                                 | `secrets:scan` clean                   |
 
 Suite: 304 passed + 1 opt-in skipped; typecheck, lint, secret scan clean.
 

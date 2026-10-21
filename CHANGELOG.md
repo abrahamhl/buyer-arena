@@ -40,6 +40,7 @@
 - Launch-check panel **Investors → Commercial Readiness** (investor lens inside). Old mix keys,
   export scopes and launch reports are migrated.
 - npm audit in the red-team panel runs only when the policy already allows the registry.
+
 ## Unreleased
 
 ### Fixed
