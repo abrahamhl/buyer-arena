@@ -89,6 +89,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .buyer-arena/persona-audit/quality
+          # Use the report just produced by 40 real Chromium journeys; otherwise
+          # the static site advertises a broken /report/demo/report.html link.
+          test -s .buyer-arena/persona-audit/sessions/persona-validation/report.html
+          mkdir -p site/report/demo
+          cp -R .buyer-arena/persona-audit/sessions/persona-validation/. site/report/demo/
           SITE_LAUNCH_STATE=public SITE_BASE=/buyer-arena-site/ node scripts/build-site.mjs
           set +e
           SITE_BASE=/buyer-arena-site/ node site/qa.mjs > .buyer-arena/persona-audit/quality/site-qa.log 2>&1
@@ -128,4 +133,4 @@ jobs:
             .buyer-arena/persona-audit/
             site/qa-shots/
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 90
