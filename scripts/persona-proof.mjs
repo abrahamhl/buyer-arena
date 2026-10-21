@@ -62,17 +62,42 @@ if(existsSync(launchFile)){
     'The built-in panel executed; findings and scores are self-evaluation, not independent validation.'});
  }
 }
+// Professional operator profiles: actual CLI invocations, explicitly limited to smoke checks.
+const operatorCases=[
+ ['01-technical-founder-doctor.log','Technical founder / environment inspection','CLI_DOCTOR'],
+ ['02-local-ai-engineer-model-catalog.json','Local AI engineer / available model catalog','MODEL_CATALOG'],
+ ['03-agent-developer-agent-eval.log','Agent developer / evaluation command discovery','AGENT_EVAL_HELP'],
+ ['04-integration-engineer-mcp.log','Integration engineer / MCP command discovery','MCP_HELP'],
+ ['05-release-manager-gates.log','Release engineer / gate command discovery','RELEASE_GATE_HELP'],
+ ['06-product-manager-five-panels.log','Product manager / five-panel command discovery','LAUNCH_HELP']
+];
+for(const [filename,role,command] of operatorCases){
+ const file=join(output,'operator-logs',filename);
+ assert(existsSync(file),'Missing operator execution log: '+filename);
+ const body=readFileSync(file,'utf8');
+ assert(body.trim().length>5,'CLI produced no useful output: '+filename);
+ report.push({record_type:'EXECUTED_CLI_OPERATOR_PROBE',actor_type:'SYNTHETIC_PROFESSIONAL_ROLE',
+  role,command,status:'COMMAND_EXIT_ZERO',source_file:file.replace(root+'/',''),
+  output_bytes:Buffer.byteLength(body),
+  evidence_level:command==='CLI_DOCTOR'||command==='MODEL_CATALOG'
+    ?'EXECUTED_READ_ONLY_DIAGNOSTIC':'COMMAND_HELP_ONLY_NOT_FULL_FUNCTIONAL_TEST',
+  reviewer_note:command==='CLI_DOCTOR'||command==='MODEL_CATALOG'
+    ?'Read-only CLI invocation completed, output saved. This is not a full role usability trial.'
+    :'The help/command interface executed, not its underlying optional integration or real-world service.',
+  suggested_followup:'Arrange external role-specific, task-based usability and acceptance testing.'});
+}
 const dir=join(output,'evidence');mkdirSync(dir,{recursive:true});
 const sourceCommit=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
 const summary={schema:'BUYER_ARENA_TEST_RUN_V1',source_commit:sourceCommit,
  generated_at:new Date().toISOString(),sample_size_synthetic_personas:groups.size,
  executed_browser_journeys:data.length,paired_variants:['baseline','candidate'],
- status_counts:statusCounts,launch_panels:launch?.panels?.map(p=>({panel:p.id,score:p.score,skipped:p.skipped||null}))??[],
+ status_counts:statusCounts,operator_smoke_checks:operatorCases.length,launch_panels:launch?.panels?.map(p=>({panel:p.id,score:p.score,skipped:p.skipped||null}))??[],
  claim:'REAL PLAYWRIGHT EXECUTION BY AUTOMATED SYNTHETIC ACTORS; ZERO RECRUITED HUMAN TESTERS',
  limitations:['Demo buyers tested the built-in fictional SaaS, not real customer demand.',
    'Panels are first-party self-audits, not external independent validation.',
    'No LLM buyer or live model was used; no paid provider call.',
    'Persona notes are generated from actual run status and event traces, never attributed to humans.',
+   'Operator help commands are discovery smoke tests, not complete execution of third-party integrations.',
    'Additional connectors require explicit credentials/third-party tools and were not executed here.']
 };
 writeFileSync(join(dir,'per-actor-observations.jsonl'),report.map(x=>JSON.stringify(x)).join('\n')+'\n');
@@ -81,7 +106,7 @@ writeFileSync(join(dir,'README.md'),
 '# Buyer Arena — actual automated persona campaign\n\n' +
 'Commit: `'+sourceCommit+'`\n\n' +
 'This is **executed synthetic-buyer QA**, not feedback from recruited customers. '+
-'Every JSONL line links to a real per-run run.json or to an executed panel report.\n\n'+
+'Every JSONL line links to a real run.json, executed panel report or CLI probe log.\n\n'+
 'Browser journeys: **'+data.length+'** across **'+groups.size+'** paired synthetic personas.\n'+
 'Statuses: `'+JSON.stringify(statusCounts)+'`.\n\n'+
 'Original evidence: `../sessions/persona-validation/runs/{baseline,candidate}/p-xxx/run.json`; '+
