@@ -94,6 +94,7 @@ jobs:
           test -s .buyer-arena/persona-audit/sessions/persona-validation/report.html
           mkdir -p site/report/demo
           cp -R .buyer-arena/persona-audit/sessions/persona-validation/. site/report/demo/
+          node scripts/sanitize-public-report.mjs site/report/demo/report.html
           SITE_LAUNCH_STATE=public SITE_BASE=/buyer-arena-site/ node scripts/build-site.mjs
           set +e
           SITE_BASE=/buyer-arena-site/ node site/qa.mjs > .buyer-arena/persona-audit/quality/site-qa.log 2>&1
