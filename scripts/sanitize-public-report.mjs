@@ -34,5 +34,9 @@ if (/trace\.zip/i.test(cleaned)) {
 }
 writeFileSync(target, cleaned);
 console.log(
-  'Public report sanitized: ' + count + ' trace links replaced; full traces retained in CI artifact.',
+  'Public report sanitized: ' +
+    count +
+    ' hyperlinks and ' +
+    scrubbed +
+    ' embedded JSON references removed; raw traces remain in CI artifacts.',
 );
