@@ -81,7 +81,7 @@ export const trivy: Integration = {
     const out = join(ctx.outDir, 'trivy.json');
     const ledger = currentLedger();
     // DB download only when the policy already allows public hosts (never escalates).
-    let online = false;
+    let online: boolean;
     try {
       ledger.check('https://mirror.gcr.io/', 'adapter');
       online = true;
