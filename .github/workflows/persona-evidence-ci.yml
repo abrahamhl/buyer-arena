@@ -62,7 +62,7 @@ jobs:
           npm test > .buyer-arena/persona-audit/quality/test-output.log 2>&1
           code=$?
           set -e
-          printf '%s\\n' "$code" > .buyer-arena/persona-audit/quality/test-exit-code.txt
+          echo "$code" > .buyer-arena/persona-audit/quality/test-exit-code.txt
           tail -n 80 .buyer-arena/persona-audit/quality/test-output.log
           if [ "$code" -ne 0 ]; then
             echo "::warning::Full suite has a regression; browser campaign continues for forensic evidence only, NOT a release PASS."
@@ -94,7 +94,7 @@ jobs:
           SITE_BASE=/buyer-arena-site/ node site/qa.mjs > .buyer-arena/persona-audit/quality/site-qa.log 2>&1
           status=$?
           set -e
-          printf '%s\\n' "$status" > .buyer-arena/persona-audit/quality/site-qa-exit-code.txt
+          echo "$status" > .buyer-arena/persona-audit/quality/site-qa-exit-code.txt
           tail -n 65 .buyer-arena/persona-audit/quality/site-qa.log
           if [ "$status" -ne 0 ]; then
             echo "::warning::Public site Chromium QA failed; preserving log and screenshots for a release NO-GO."
