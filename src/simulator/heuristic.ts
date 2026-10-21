@@ -21,8 +21,7 @@ import { en_ } from '../i18n/messages.js';
 export const KW = {
   price:
     /pric|precio|precios|prijs|prijzen|plans?\b|plan(nen|es)|billing|factur|coste?|costo|kosten|subscription|suscripci|abonnement|tarifa|tarief/i,
-  cta:
-    /start|trial|sign ?up|get started|create (an |una )?account|crear (una )?cuenta|account (aanmaken|maken)|aanmaken|register|registr|buy|comprar|kopen|subscribe|suscrib|choose|select|elegir|seleccionar|join|unirse|try it|probar|probeer|proberen|continue|continuar|checkout|pagar|betalen|afrekenen|bestellen|empezar|empiez|comenzar|comienz|prueba|proef|aanmelden|doorgaan/i,
+  cta: /start|trial|sign ?up|get started|create (an |una )?account|crear (una )?cuenta|account (aanmaken|maken)|aanmaken|register|registr|buy|comprar|kopen|subscribe|suscrib|choose|select|elegir|seleccionar|join|unirse|try it|probar|probeer|proberen|continue|continuar|checkout|pagar|betalen|afrekenen|bestellen|empezar|empiez|comenzar|comienz|prueba|proef|aanmelden|doorgaan/i,
   trust:
     /refund|reembolso|terugbetaling|guarantee|garant|garantie|money.back|devoluci|geld terug|terms|términos|voorwaarden|condiciones|faq|veelgestelde|preguntas|security|seguridad|veiligheid|cancel|annul/i,
   explore:

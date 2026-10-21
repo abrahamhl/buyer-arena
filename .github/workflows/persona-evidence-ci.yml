@@ -1,0 +1,186 @@
+name: Buyer Arena | actual synthetic persona execution and per-run evidence
+on:
+  push:
+    branches: [feat/evidence-real-buyer-arena-audit-20261021]
+    paths:
+      - 'scripts/persona-proof.mjs'
+      - 'scripts/civic-relay-review.mjs'
+      - '.github/workflows/persona-evidence-ci.yml'
+      - '.github/workflows/ci.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/**'
+      - 'tests/**'
+  pull_request:
+    paths:
+      - 'scripts/persona-proof.mjs'
+      - 'scripts/civic-relay-review.mjs'
+      - '.github/workflows/persona-evidence-ci.yml'
+      - '.github/workflows/ci.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/**'
+      - 'tests/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  persona-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      BUYER_ARENA_OFFLINE: '1'
+      BUYER_ARENA_NETWORK: 'offline'
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.23.3'
+          cache: npm
+      - name: Reconcile stale dependency lockfile (temporary CI workspace only)
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Strictly install resolved dependencies; build from generated lock
+        run: npm ci --no-audit --no-fund
+      - name: Show drift requiring committed lockfile follow-up
+        run: |
+          git diff --stat -- package-lock.json
+          node -e "const p=require('./package-lock.json');if(!p.packages?.[''])process.exit(1);console.log('lockfile packages',Object.keys(p.packages).length)"
+      - name: Install actual Chromium on runner (only to run local fictional test store)
+        run: npx playwright install --with-deps chromium
+      - name: Compile executable Buyer Arena
+        run: npm run build
+      - name: Typecheck, lint, secret scan and full regression suite (keep failure evidence)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run typecheck
+          npm run lint
+          npm run secrets:scan
+          mkdir -p .buyer-arena/persona-audit/quality
+          set +e
+          npm test > .buyer-arena/persona-audit/quality/test-output.log 2>&1
+          code=$?
+          set -e
+          echo "$code" > .buyer-arena/persona-audit/quality/test-exit-code.txt
+          tail -n 80 .buyer-arena/persona-audit/quality/test-output.log
+          if [ "$code" -ne 0 ]; then
+            echo "::warning::Full suite has a regression; browser campaign continues for forensic evidence only, NOT a release PASS."
+          fi
+      - name: Execute actual CLI operator surface; record stdout/stderr
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .buyer-arena/persona-audit/operator-logs
+          node dist/cli/main.js doctor > .buyer-arena/persona-audit/operator-logs/01-technical-founder-doctor.log 2>&1
+          node dist/cli/main.js models list --json > .buyer-arena/persona-audit/operator-logs/02-local-ai-engineer-model-catalog.json 2>&1
+          node dist/cli/main.js agent-eval --help > .buyer-arena/persona-audit/operator-logs/03-agent-developer-agent-eval.log 2>&1
+          node dist/cli/main.js mcp --help > .buyer-arena/persona-audit/operator-logs/04-integration-engineer-mcp.log 2>&1
+          node dist/cli/main.js gate --help > .buyer-arena/persona-audit/operator-logs/05-release-manager-gates.log 2>&1
+          node dist/cli/main.js launch-check --help > .buyer-arena/persona-audit/operator-logs/06-product-manager-five-panels.log 2>&1
+      - name: Run 20 synthetic buyers × 2 variants in REAL Chromium (not humans)
+        run: |
+          node dist/cli/main.js demo --size 20 --seed 42 --max-parallel 2 --session persona-validation --root .buyer-arena/persona-audit
+      - name: Execute five actual product panels with local browser demo and repo audit
+        run: |
+          node dist/cli/main.js launch-check --demo --repo . --size 25 --seed 421 --depth quick --name "Buyer Arena self-validation" --id product-validation --no-dashboard --root .buyer-arena/persona-audit
+      - name: Verify the actual public-site generator and UX in Chromium, three languages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .buyer-arena/persona-audit/quality
+          # Use the report just produced by 40 real Chromium journeys; otherwise
+          # the static site advertises a broken /report/demo/report.html link.
+          test -s .buyer-arena/persona-audit/sessions/persona-validation/report.html
+          mkdir -p site/report/demo
+          cp -R .buyer-arena/persona-audit/sessions/persona-validation/. site/report/demo/
+          node scripts/sanitize-public-report.mjs site/report/demo/report.html
+          SITE_LAUNCH_STATE=public SITE_BASE=/buyer-arena-site/ node scripts/build-site.mjs
+          set +e
+          SITE_BASE=/buyer-arena-site/ node site/qa.mjs > .buyer-arena/persona-audit/quality/site-qa.log 2>&1
+          status=$?
+          set -e
+          echo "$status" > .buyer-arena/persona-audit/quality/site-qa-exit-code.txt
+          tail -n 65 .buyer-arena/persona-audit/quality/site-qa.log
+          if [ "$status" -ne 0 ]; then
+            echo "::warning::Public site Chromium QA failed; preserving log and screenshots for a release NO-GO."
+          fi
+      - name: Check all 40 browser runs and produce evidence-backed notes per persona
+        run: node scripts/persona-proof.mjs .buyer-arena/persona-audit
+      - name: Execute Buyer Arena CLI against Civic Relay research preview (URL smoke; not A/B claim)
+        shell: bash
+        env:
+          BUYER_ARENA_OFFLINE: '0'
+          BUYER_ARENA_NETWORK: 'online'
+          CIVIC_RELAY_URL: https://civic-relay-investor.vercel.app
+        run: |
+          set +e
+          mkdir -p .buyer-arena/civic-relay-audit/cli
+          node dist/cli/main.js --network online compare \
+            --baseline "$CIVIC_RELAY_URL" --candidate "$CIVIC_RELAY_URL" \
+            --template saas --size 6 --seed 20261021 --max-parallel 2 \
+            --success-text "OEP|Offline Emergency Protocol" \
+            --instruction "Identify research simulation and limitations, never assume emergency dispatch" \
+            --session civic-oep-url-smoke --root .buyer-arena/civic-relay-audit/cli \
+            > .buyer-arena/civic-relay-audit/cli/compare-stdout.log 2>&1
+          status=$?
+          printf '%s\n' "$status" > .buyer-arena/civic-relay-audit/cli/compare-exit-code.txt
+          tail -n 35 .buyer-arena/civic-relay-audit/cli/compare-stdout.log
+          echo "SAME URL on both variants: navigation SMOKE TEST ONLY; no improvement delta claimed."
+      - name: Execute eight Civic Relay stakeholder browser journeys and write per-role reports
+        shell: bash
+        env:
+          BUYER_ARENA_OFFLINE: '0'
+          BUYER_ARENA_NETWORK: 'online'
+          CIVIC_RELAY_URL: https://civic-relay-investor.vercel.app
+          CIVIC_RELAY_COMMIT: 73d90de682d7aaa78fe6a7a791861aef91844613
+          CIVIC_AUDIT_ROOT: .buyer-arena/civic-relay-audit
+        run: |
+          set +e
+          node scripts/civic-relay-review.mjs
+          status=$?
+          printf '%s\n' "$status" > .buyer-arena/civic-relay-audit/role-exit-code.txt
+          if [ "$status" -ne 0 ]; then echo "::warning::Civic Relay stakeholder QA uncovered blockers: preserve per-role evidence."; fi
+      - name: Archive Civic Relay stakeholder browser evidence separately
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # upload-artifact v4.6.2
+        with:
+          name: civic-relay-buyer-arena-role-evidence
+          path: .buyer-arena/civic-relay-audit/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Release gate - fail if the regression suite failed
+        if: always()
+        shell: bash
+        run: |
+          if [ -f .buyer-arena/persona-audit/quality/test-exit-code.txt ]; then
+            code="$(cat .buyer-arena/persona-audit/quality/test-exit-code.txt)"
+            if [ "$code" != "0" ]; then
+              echo "::error::Buyer Arena release NO-GO: core regression suite failed (see uploaded test-output.log)"
+              exit 1
+            fi
+          fi
+          if [ -f .buyer-arena/persona-audit/quality/site-qa-exit-code.txt ]; then
+            site="$(cat .buyer-arena/persona-audit/quality/site-qa-exit-code.txt)"
+            if [ "$site" != "0" ]; then
+              echo "::error::Buyer Arena site QA failed (see uploaded site-qa.log)"
+              exit 1
+            fi
+          fi
+          if [ ! -s .buyer-arena/civic-relay-audit/campaign-summary.json ]; then
+            echo "::error::Civic Relay browser audit produced no summary."
+            exit 1
+          fi
+          node -e "const s=require('./.buyer-arena/civic-relay-audit/campaign-summary.json'); if(s.synthetic_roles!==8||s.critical_failures!==0){console.error('Civic Relay release NO-GO: '+s.critical_failures+' critical browser failures / '+s.synthetic_roles+' roles');process.exit(1)}console.log('Civic Relay role-gate PASS: 8 scripted stakeholders; 0 critical failures')"
+      - name: Upload raw run.json, evidence JSONL, screenshots and launch reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # upload-artifact v4.6.2
+        with:
+          name: buyer-arena-real-synthetic-browser-evidence
+          path: |
+            .buyer-arena/persona-audit/
+            site/qa-shots/
+          if-no-files-found: warn
+          retention-days: 90

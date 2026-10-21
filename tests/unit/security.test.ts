@@ -203,9 +203,17 @@ describe('egress proxy', () => {
       screenshots: false,
       trace: 'off',
     });
+    // The browser can reject a cross-origin redirect at Playwright's route layer
+    // before it ever reaches the lower-level proxy. That is a valid denial, not
+    // evidence that the proxy failed. Verify both independent boundaries instead.
     expect(internalHits).toBe(before);
     expect(res.manifest.egress?.guard).toBe(true);
-    expect(res.manifest.egress?.blocked.some((b) => b.port === Number(new URL(internalUrl).port))).toBe(true);
+    // Force a blocked destination through the egress proxy itself to confirm
+    // this second defence, including its audit record. No internal request reaches it.
+    proxy = await startEgressProxy(egressPolicy({ explicit: [targetUrl] }));
+    expect(await viaProxy(proxy, `${internalUrl}/latest/meta-data/`)).toBe(403);
+    expect(proxy.blocked.some((b) => b.port === Number(new URL(internalUrl).port))).toBe(true);
+    expect(internalHits).toBe(before);
   });
 });
 

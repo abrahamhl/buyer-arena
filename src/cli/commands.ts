@@ -191,7 +191,10 @@ export function registerRcCommands(program: Command): void {
     .option('--install <cmd>', 'install command (reaches the package registry)')
     .option('--buyer-before <rate>', 'synthetic goal completion on the before deployment (0..1)')
     .option('--buyer-after <rate>', 'synthetic goal completion on the after deployment (0..1)')
-    .option('--sandbox <host|docker>', 'where build/test run (docker = throw-away container; required for remote repos)')
+    .option(
+      '--sandbox <host|docker>',
+      'where build/test run (docker = throw-away container; required for remote repos)',
+    )
     .option('--id <id>', 'evaluation id')
     .option('--json', 'print the report JSON')
     .option('--root <dir>', 'output root', '.buyer-arena')

@@ -55,10 +55,10 @@ The last major unknown — does a real cloud LLM drive a buyer journey end to en
 
 Paired evidence (same population seed 42, same task, same demo-store baseline, 12 buyers each):
 
-| Buyer                              | Completion | Cost    | Calls | Session id            |
-| ---------------------------------- | ---------- | ------- | ----- | --------------------- |
-| heuristic (deterministic, free)    | 42 %       | $0      | 0     | `20260926-054556-a159` |
-| `openai-compatible:deepseek-chat`  | 58 %       | $1.4610 | 86    | `20260926-054603-f655` |
+| Buyer                             | Completion | Cost    | Calls | Session id             |
+| --------------------------------- | ---------- | ------- | ----- | ---------------------- |
+| heuristic (deterministic, free)   | 42 %       | $0      | 0     | `20260926-054556-a159` |
+| `openai-compatible:deepseek-chat` | 58 %       | $1.4610 | 86    | `20260926-054603-f655` |
 
 `ensemble` (heuristic × LLM) — 12 shared persona × variant pairs:
 
@@ -67,7 +67,7 @@ Paired evidence (same population seed 42, same task, same demo-store baseline, 1
 - model disagreement **16.7 %**, reported separately from population and calibration uncertainty
   (never merged, per the project invariant).
 
-Interpretation: the two independent buyers agree substantially on *who completes*, while the LLM
+Interpretation: the two independent buyers agree substantially on _who completes_, while the LLM
 buyer completes more journeys (it handles the pricing/CTA steps that the deterministic buyer
 misses). This is a consistency signal, not ground truth.
 
