@@ -1,5 +1,5 @@
-/* global document, innerWidth */
 #!/usr/bin/env node
+/* global document, innerWidth */
 /**
  * Buyer Arena / Civic Relay consented public-demo browser exercise.
  * REAL Chromium actions performed by AUTOMATED ROLE SCENARIOS, NOT humans.
