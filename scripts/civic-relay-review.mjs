@@ -9,7 +9,7 @@ import { chromium } from 'playwright';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-const DEFAULT_URL = 'https://civic-relay-investor-f5c2a3kdr-2fabraham-7129s-projects.vercel.app';
+const DEFAULT_URL = 'https://civic-relay-investor.vercel.app';
 const origin = new URL(process.env.CIVIC_RELAY_URL || DEFAULT_URL);
 if (origin.protocol !== 'https:' || !origin.hostname.endsWith('.vercel.app')) {
   throw new Error('Refusing target: explicit HTTPS Vercel demo required');
