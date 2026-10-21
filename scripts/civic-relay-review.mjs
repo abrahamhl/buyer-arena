@@ -203,7 +203,7 @@ try {
           'Six-state decision controls: ' + labels,
           'Expose six concrete coordination decisions and their input/output states.',
         );
-        const safety = (await page.locator('#routing-lab .mer-warning').innerText()).slice(0, 500);
+        const safety = (await page.locator('#routing-lab p.mer-warning').innerText()).slice(0, 500);
         check(
           'responder-no-false-dispatch',
           /(112|emergency service|satellit|real)/i.test(safety),
@@ -290,7 +290,7 @@ try {
           'Clicked Dutch simulation lab',
           'Expose consent choices in Dutch before any hypothetical status request.',
         );
-        const warning = (await page.locator('.mer-warning').innerText()).slice(0, 500);
+        const warning = (await page.locator('#routing-lab p.mer-warning').innerText()).slice(0, 500);
         check(
           'privacy-radio-boundary',
           /(Bluetooth|Wi-Fi|112)/i.test(warning),
@@ -420,6 +420,9 @@ try {
       writeFileSync(join(output, 'actors', persona.id + '.json'), JSON.stringify(record, null, 2) + '\n');
       actorReports.push(record);
       console.log(persona.id + ' ' + record.verdict + ' ' + record.passed + '/' + record.checks.length);
+      for (const failed of record.checks.filter((c) => !c.pass)) {
+        console.error(persona.id + ' FAILED ' + failed.id + ': ' + failed.observation);
+      }
       await context.close();
     }
   }
