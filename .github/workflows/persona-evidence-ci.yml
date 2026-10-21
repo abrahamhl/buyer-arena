@@ -167,6 +167,11 @@ jobs:
               exit 1
             fi
           fi
+          if [ ! -s .buyer-arena/civic-relay-audit/campaign-summary.json ]; then
+            echo "::error::Civic Relay browser audit produced no summary."
+            exit 1
+          fi
+          node -e "const s=require('./.buyer-arena/civic-relay-audit/campaign-summary.json'); if(s.synthetic_roles!==8||s.critical_failures!==0){console.error('Civic Relay release NO-GO: '+s.critical_failures+' critical browser failures / '+s.synthetic_roles+' roles');process.exit(1)}console.log('Civic Relay role-gate PASS: 8 scripted stakeholders; 0 critical failures')"
       - name: Upload raw run.json, evidence JSONL, screenshots and launch reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # upload-artifact v4.6.2
