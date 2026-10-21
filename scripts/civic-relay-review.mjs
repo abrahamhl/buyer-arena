@@ -109,7 +109,7 @@ try {
         waitUntil: 'domcontentloaded',
         timeout: 50000,
       });
-      await page.locator('h1').first.waitFor({ state: 'visible', timeout: 20000 });
+      await page.locator('h1').first().waitFor({ state: 'visible', timeout: 20000 });
       await page.waitForTimeout(250);
       check(
         'http-response',
