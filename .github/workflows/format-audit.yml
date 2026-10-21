@@ -1,0 +1,38 @@
+name: One-shot audit branch format reconciliation
+on:
+  push:
+    branches: [feat/evidence-real-buyer-arena-audit-20261021]
+    paths: ['.github/workflows/format-audit.yml']
+permissions:
+  contents: write
+jobs:
+  prettier:
+    if: github.repository == 'abrahamhl/buyer-arena' && github.ref == 'refs/heads/feat/evidence-real-buyer-arena-audit-20261021'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.23.3'
+      - name: Install pinned dev tooling without running lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Apply project Prettier to exactly six flagged files
+        run: |
+          npx prettier --write CHANGELOG.md docs/project/OVERNIGHT_REPORT.md docs/project/SESSION_STATE.md scripts/persona-proof.mjs src/cli/commands.ts src/simulator/heuristic.ts
+      - name: Verify formatting and push limited to feature branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run format:check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md docs/project/OVERNIGHT_REPORT.md docs/project/SESSION_STATE.md scripts/persona-proof.mjs src/cli/commands.ts src/simulator/heuristic.ts
+          if git diff --cached --quiet; then
+            echo "No format changes"
+            exit 0
+          fi
+          git commit -m "style: format six pre-existing code/docs files required by release CI"
+          git push origin HEAD:refs/heads/feat/evidence-real-buyer-arena-audit-20261021
