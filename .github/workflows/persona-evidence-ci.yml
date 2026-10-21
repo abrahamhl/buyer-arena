@@ -84,6 +84,21 @@ jobs:
       - name: Execute five actual product panels with local browser demo and repo audit
         run: |
           node dist/cli/main.js launch-check --demo --repo . --size 25 --seed 421 --depth quick --name "Buyer Arena self-validation" --id product-validation --no-dashboard --root .buyer-arena/persona-audit
+      - name: Verify the actual public-site generator and UX in Chromium, three languages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .buyer-arena/persona-audit/quality
+          SITE_LAUNCH_STATE=public SITE_BASE=/buyer-arena-site/ node scripts/build-site.mjs
+          set +e
+          SITE_BASE=/buyer-arena-site/ node site/qa.mjs > .buyer-arena/persona-audit/quality/site-qa.log 2>&1
+          status=$?
+          set -e
+          printf '%s\\n' "$status" > .buyer-arena/persona-audit/quality/site-qa-exit-code.txt
+          tail -n 65 .buyer-arena/persona-audit/quality/site-qa.log
+          if [ "$status" -ne 0 ]; then
+            echo "::warning::Public site Chromium QA failed; preserving log and screenshots for a release NO-GO."
+          fi
       - name: Check all 40 browser runs and produce evidence-backed notes per persona
         run: node scripts/persona-proof.mjs .buyer-arena/persona-audit
       - name: Release gate - fail if the regression suite failed
@@ -97,11 +112,20 @@ jobs:
               exit 1
             fi
           fi
+          if [ -f .buyer-arena/persona-audit/quality/site-qa-exit-code.txt ]; then
+            site="$(cat .buyer-arena/persona-audit/quality/site-qa-exit-code.txt)"
+            if [ "$site" != "0" ]; then
+              echo "::error::Buyer Arena site QA failed (see uploaded site-qa.log)"
+              exit 1
+            fi
+          fi
       - name: Upload raw run.json, evidence JSONL, screenshots and launch reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # upload-artifact v4.6.2
         with:
           name: buyer-arena-real-synthetic-browser-evidence
-          path: .buyer-arena/persona-audit/
+          path: |
+            .buyer-arena/persona-audit/
+            site/qa-shots/
           if-no-files-found: warn
           retention-days: 14
