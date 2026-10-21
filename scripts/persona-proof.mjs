@@ -5,6 +5,7 @@
  */
 import {existsSync,readdirSync,readFileSync,mkdirSync,writeFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
+import {Buffer} from 'node:buffer';
 import {execFileSync} from 'node:child_process';
 const output=resolve(process.argv[2]||'.buyer-arena/persona-audit');
 const demo=join(output,'sessions','persona-validation');
