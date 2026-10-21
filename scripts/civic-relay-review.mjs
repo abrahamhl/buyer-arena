@@ -383,6 +383,7 @@ try {
       await page.screenshot({ path: shot, fullPage: false, timeout: 20000 });
       record.screenshot = 'screenshots/' + persona.id + '.png';
     } catch (e) {
+      console.error(persona.id + ' browser exception: ' + String(e.stack || e).slice(0, 500));
       check(
         'browser-run-exception',
         false,
