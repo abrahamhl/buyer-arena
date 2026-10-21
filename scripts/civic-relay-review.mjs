@@ -1,3 +1,4 @@
+/* global document, innerWidth */
 #!/usr/bin/env node
 /**
  * Buyer Arena / Civic Relay consented public-demo browser exercise.
@@ -47,7 +48,7 @@ try {
    confidence:'direct Playwright browser observation, not human comprehension',
   };
   const external=new Set();
-  page.on('request',request=>{try {external.add(new URL(request.url()).origin);}catch {}});
+  page.on('request',request=>{try {external.add(new URL(request.url()).origin);}catch { /* Ignore malformed third-party request URL in egress inventory. */ }});
   page.on('pageerror',e=>record.page_errors.push(String(e.message).slice(0,280)));
   page.on('console',message=>{if(message.type()==='error')record.console_errors.push(message.text().slice(0,260));});
   const check=(id,ok,detail,fix,critical=true)=>{
@@ -196,7 +197,7 @@ try {
   } catch(e) {
    check('browser-run-exception',false,String(e.stack||e).slice(0,700),
      'Reproduce the failed Playwright step and repair the deployed demo.');
-   try { const shot=join(output,'screenshots',persona.id+'-error.png'); await page.screenshot({path:shot,timeout:15000}); record.screenshot='screenshots/'+persona.id+'-error.png'; }catch{}
+   try { const shot=join(output,'screenshots',persona.id+'-error.png'); await page.screenshot({path:shot,timeout:15000}); record.screenshot='screenshots/'+persona.id+'-error.png'; }catch{ /* Screenshot errors are captured by the owning role check. */ }
   } finally{
    record.network_origins=Array.from(external).sort();
    record.passed=record.checks.filter(x=>x.pass).length;
