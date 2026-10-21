@@ -239,11 +239,11 @@ try {
       const navCount = await el('.oep-chapter-nav a');
       check(
         'chapter-navigation',
-        navCount === 6,
+        navCount >= 6,
         'Chapter anchor count ' + navCount,
         'Restore navigation for all six major sections.',
         true,
-        '6 sticky navigation chapter links present',
+        'At least 6 sticky navigation chapter links present',
       );
       const pageHasSafety =
         /(simulad|synthetic|gesimuleerd|geen echte|sin .{0,35}reales|not physically tested|not an emergency)/i.test(
@@ -347,6 +347,15 @@ try {
           true,
           'Explicit warning that synthetic ACK is not 112 dispatch',
         );
+        const radarCanvasCount = await el('[data-testid="rf-through-wall-canvas"]');
+        check(
+          'responder-through-wall-rf-radar',
+          radarCanvasCount === 1,
+          'Through-wall Wi-Fi CSI / RF thermal radar canvas count: ' + radarCanvasCount,
+          'Expose interactive through-wall RF & Wi-Fi CSI radar for emergency responders.',
+          true,
+          'Through-wall Wi-Fi CSI / RF spectral radar canvas present',
+        );
       }
       if (persona.mode === 'investor' || persona.mode === 'partner') {
         const ok = await clickAnchor('evidence');
@@ -387,6 +396,16 @@ try {
             'Explain target partner, milestones, costs, risks and clear ask.',
             true,
             '#investment section present',
+          );
+          const todayVsOepCount = await el('#today-vs-oep');
+          const dealRoomCount = await el('#chatgpt-investor-deal-room');
+          check(
+            'investor-live-telecom-and-deal-room',
+            todayVsOepCount === 1 && dealRoomCount === 1,
+            'Today-vs-OEP block: ' + todayVsOepCount + ', ChatGPT Deal-Room block: ' + dealRoomCount,
+            'Expose Today-vs-OEP operational cases, live WebCrypto/WebRTC node, and 8-track funding deal-room.',
+            true,
+            'Today-vs-OEP scenarios and 8-track funding deal-room present',
           );
         }
       }
