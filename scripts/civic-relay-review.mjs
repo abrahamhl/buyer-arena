@@ -119,8 +119,8 @@ try {
       );
       check(
         'visible-hero',
-        (await page.locator('h1').first.innerText()).trim().length > 15,
-        (await page.locator('h1').first.innerText()).slice(0, 200),
+        (await page.locator('h1').first().innerText()).trim().length > 15,
+        (await page.locator('h1').first().innerText()).slice(0, 200),
         'Restore a readable hero heading.',
       );
       const sectionIds = [
