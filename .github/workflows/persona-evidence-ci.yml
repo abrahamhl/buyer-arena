@@ -38,8 +38,11 @@ jobs:
         with:
           node-version: '22.12.0'
           cache: npm
-      - name: Install dependencies from checked-in lockfile
-        run: npm ci --no-audit --no-fund
+      - name: Install dependencies for diagnostic campaign (peer conflict is a known release blocker)
+        # The existing lock pins TypeScript 7 against typescript-eslint 8 (<6.1 peer).
+        # Legacy peer resolution is ONLY for obtaining diagnostic browser evidence.
+        # Production lockfile/peer alignment remains a mandatory fix before release.
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
       - name: Install actual Chromium on runner (only to run local fictional test store)
         run: npx playwright install --with-deps chromium
       - name: Compile executable Buyer Arena
